@@ -31,6 +31,7 @@ import {
   FeatureTest,
 } from "../../shared/util.js";
 import { AnnotationEditor } from "./editor.js";
+import { AnnotationEditorLayerEventManager } from "./annotation_event_manager.js";
 import { FreeTextEditor } from "./freetext.js";
 import { HighlightEditor } from "./highlight.js";
 import { InkEditor } from "./ink.js";
@@ -95,6 +96,10 @@ class AnnotationEditorLayer {
 
   #uiManager;
 
+  #eventBus;
+
+  #eventManager;
+
   static _initialized = false;
 
   static #editorTypes = new Map(
@@ -121,6 +126,7 @@ class AnnotationEditorLayer {
     textLayer,
     viewport,
     l10n,
+    eventBus, // 新增 eventBus
   }) {
     const editorTypes = [...AnnotationEditorLayer.#editorTypes.values()];
     if (!AnnotationEditorLayer._initialized) {
@@ -142,6 +148,11 @@ class AnnotationEditorLayer {
     this._structTree = structTreeLayer;
 
     this.#uiManager.addLayer(this);
+    this.#eventBus = eventBus;
+    this.#eventManager = new AnnotationEditorLayerEventManager({
+      eventBus: this.#eventBus,
+      layer: this,
+    });
   }
 
   get isEmpty() {
@@ -529,6 +540,7 @@ class AnnotationEditorLayer {
     this.#uiManager.removeEditor(editor);
     editor.div.remove();
     editor.isAttachedToDOM = false;
+    this.#eventManager.dispatchEditorRemoved(editor);
   }
 
   /**
@@ -579,6 +591,7 @@ class AnnotationEditorLayer {
     editor.onceAdded(/* focus = */ !this.#isEnabling);
     this.#uiManager.addToAnnotationStorage(editor);
     editor._reportTelemetry(editor.telemetryInitialData);
+    this.#eventManager.dispatchEditorAdded(editor);
   }
 
   moveEditorInDOM(editor) {

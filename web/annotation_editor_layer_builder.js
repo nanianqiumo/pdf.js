@@ -72,6 +72,7 @@ class AnnotationEditorLayerBuilder {
       this.l10n ||= new GenericL10n();
     }
     this.annotationEditorLayer = null;
+    this.eventBus = options.eventBus; // 新增 eventBus
     this.div = null;
     this._cancelled = false;
     this.#uiManager = options.uiManager;
@@ -120,6 +121,7 @@ class AnnotationEditorLayerBuilder {
       annotationLayer: this.#annotationLayer,
       textLayer: this.#textLayer,
       drawLayer: this.#drawLayer,
+      eventBus: this.eventBus, // 继续传递 eventBus
     });
 
     const parameters = {
