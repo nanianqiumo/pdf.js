@@ -21,26 +21,21 @@ class AnnotationEditorLayerEventManager {
    * @param {AnnotationEditor} editor - The editor that was added.
    */
   dispatchEditorAdded(editor) {
-    if (!this.#eventBus) {
+    if (!this.#eventBus || editor.editorType !== "highlight") {
       return;
     }
 
-    // Specific event for your "highlightcreated" requirement
-    if (editor.constructor?.name === "HighlightEditor") {
-      this.#dispatchHighlightEvent(editor, "highlightCreated");
-    }
-  }
-
-  #dispatchHighlightEvent(editor, eventName) {
-    if (!this.#eventBus || editor.constructor?.name !== "HighlightEditor") {
+    if (editor.cancel_event) {
       return;
     }
-    const text = editor.text; // Assuming HighlightEditor has this method
+
+    const text = editor.text;
     if (text) {
-      this.#eventBus.dispatch(eventName, {
+      this.#eventBus.dispatch("highlightCreated", {
         id: editor.id,
-        page: this.#layer.pageIndex + 1,
+        page: editor.pageIndex + 1,
         text,
+        color: editor.color,
       });
     }
   }
@@ -50,19 +45,19 @@ class AnnotationEditorLayerEventManager {
    * @param {AnnotationEditor} editor - The editor that was removed.
    */
   dispatchEditorRemoved(editor) {
-    if (!this.#eventBus) {
+    if (!this.#eventBus || editor.editorType !== "highlight") {
       return;
     }
-    // this.#eventBus.dispatch("editorremoved", {
-    //   source: this,
-    //   page: this.#layer.pageIndex + 1,
-    //   editorId: editor.id,
-    //   editorType: editor.constructor.name,
-    // });
 
-    if (editor.constructor?.name === "HighlightEditor") {
-      this.#dispatchHighlightEvent(editor, "highlightRemoved");
+    if (editor.cancel_event) {
+      console.log(`取消事件: ${editor.id}`);
+      return;
     }
+
+    this.#eventBus.dispatch("highlightRemoved", {
+      id: editor.id,
+      page: editor.pageIndex + 1,
+    });
   }
 
   /**

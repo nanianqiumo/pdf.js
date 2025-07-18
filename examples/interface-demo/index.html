@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF.js 接口演示</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f9fa;
+      padding-bottom: 30px;
+    }
+    .header {
+      background-color: #343a40;
+      color: white;
+      padding: 20px 0;
+      margin-bottom: 20px;
+    }
+    .container {
+      max-width: 1200px;
+    }
+    .viewer-container {
+      height: 70vh;
+      min-height: 500px;
+      border-radius: 5px;
+      overflow: hidden;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    }
+    #pdf-viewer {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .card {
+      margin-bottom: 20px;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    .card-header {
+      background-color: #f8f9fa;
+      font-weight: 600;
+      border-bottom: 1px solid #eaeaea;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .btn-primary {
+      background-color: #0b5ed7;
+    }
+    .btn-outline-secondary {
+      color: #6c757d;
+      border-color: #6c757d;
+    }
+    .log {
+      height: 150px;
+      overflow-y: auto;
+      background-color: #f8f9fa;
+      border: 1px solid #eaeaea;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 14px;
+      margin-top: 15px;
+    }
+    .log-entry {
+      margin-bottom: 5px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+    .log-time {
+      color: #6c757d;
+      font-size: 0.85em;
+    }
+    .log-message {
+      margin-left: 5px;
+    }
+    .annotation-box {
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .color-swatch {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      margin-right: 5px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .color-swatch.active {
+      border: 2px solid #0b5ed7;
+    }
+    .tab-content {
+      padding: 15px;
+      background-color: #fff;
+      border: 1px solid #dee2e6;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+    }
+    .nav-link {
+      color: #495057;
+    }
+    .nav-link.active {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col">
+          <h1><img src="../../web/images/toolbarButton-viewThumbnail.svg" alt="PDF" width="32" height="32" class="me-2">PDF.js 接口演示</h1>
+          <p class="mb-0">展示如何使用 PDF.js 通信接口控制 PDF 查看器</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="container">
+    <div class="row">
+      <!-- PDF 查看器部分 -->
+      <div class="col-lg-8">
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>PDF 查看器</span>
+            <div>
+              <div class="input-group">
+                <select class="form-select" id="pdf-select" style="max-width: 180px;">
+                  <option value="/test/pdfs/tracemonkey.pdf">测试PDF (服务器)</option>
+                  <option value="example.pdf">示例PDF (本地)</option>
+                  <option value="custom">自定义URL...</option>
+                </select>
+                <input type="text" id="pdf-url" class="form-control" placeholder="输入PDF的URL" 
+                  value="/test/pdfs/tracemonkey.pdf">
+                <button class="btn btn-primary" id="load-pdf">加载</button>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="viewer-container">
+              <iframe id="pdf-viewer" src="" title="PDF Viewer"></iframe>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 日志输出 -->
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>操作日志</span>
+            <button class="btn btn-sm btn-outline-secondary" id="clear-log">清除日志</button>
+          </div>
+          <div class="card-body">
+            <div class="log" id="log"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 控制面板部分 -->
+      <div class="col-lg-4">
+        <ul class="nav nav-tabs" id="controlTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="navigation-tab" data-bs-toggle="tab" data-bs-target="#navigation" type="button" role="tab">导航</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="search-tab" data-bs-toggle="tab" data-bs-target="#search" type="button" role="tab">搜索与高亮</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="annotations-tab" data-bs-toggle="tab" data-bs-target="#annotations" type="button" role="tab">注释</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="document-tab" data-bs-toggle="tab" data-bs-target="#document" type="button" role="tab">文档</button>
+          </li>
+        </ul>
+        
+        <div class="tab-content" id="controlTabContent">
+          <!-- 导航选项卡 -->
+          <div class="tab-pane fade show active" id="navigation" role="tabpanel" aria-labelledby="navigation-tab">
+            <div class="mb-3">
+              <label class="form-label">页面导航</label>
+              <div class="d-flex align-items-center mb-2">
+                <button id="first-page" class="btn btn-sm btn-outline-secondary me-2">
+                  <i class="bi bi-chevron-double-left"></i> 首页
+                </button>
+                <button id="prev-page" class="btn btn-sm btn-outline-secondary me-2">
+                  <i class="bi bi-chevron-left"></i> 上一页
+                </button>
+                <div class="input-group mx-2" style="width: 120px;">
+                  <input type="number" id="page-num-input" class="form-control form-control-sm" min="1" value="1">
+                  <span class="input-group-text" id="total-pages">/ 1</span>
+                </div>
+                <button id="next-page" class="btn btn-sm btn-outline-secondary me-2">
+                  下一页 <i class="bi bi-chevron-right"></i>
+                </button>
+                <button id="last-page" class="btn btn-sm btn-outline-secondary">
+                  末页 <i class="bi bi-chevron-double-right"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">缩放控制</label>
+              <div class="d-flex align-items-center">
+                <select id="zoom-select" class="form-select me-2">
+                  <option value="auto">自动</option>
+                  <option value="page-fit">适合页面</option>
+                  <option value="page-width">适合宽度</option>
+                  <option value="0.5">50%</option>
+                  <option value="0.75">75%</option>
+                  <option value="1">100%</option>
+                  <option value="1.25">125%</option>
+                  <option value="1.5">150%</option>
+                  <option value="2">200%</option>
+                </select>
+                <button id="zoom-in" class="btn btn-sm btn-outline-secondary me-2">放大</button>
+                <button id="zoom-out" class="btn btn-sm btn-outline-secondary">缩小</button>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">文档操作</label>
+              <div class="d-flex">
+                <button id="download-pdf" class="btn btn-sm btn-outline-secondary me-2">下载</button>
+                <button id="print-pdf" class="btn btn-sm btn-outline-secondary me-2">打印</button>
+                <button id="rotate-cw" class="btn btn-sm btn-outline-secondary me-2">顺时针旋转</button>
+                <button id="rotate-ccw" class="btn btn-sm btn-outline-secondary">逆时针旋转</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 搜索选项卡 -->
+          <div class="tab-pane fade" id="search" role="tabpanel" aria-labelledby="search-tab">
+            <div class="mb-3">
+              <label for="search-text" class="form-label">搜索与高亮文本</label>
+              <div class="input-group mb-2">
+                <input type="text" id="search-text" class="form-control" placeholder="输入要搜索的文本">
+                <button id="search-next" class="btn btn-outline-secondary">下一个</button>
+                <button id="search-prev" class="btn btn-outline-secondary">上一个</button>
+              </div>
+              <div class="d-flex mb-3">
+                <button id="highlight-text" class="btn btn-sm btn-primary me-2">高亮所有匹配</button>
+                <button id="clear-highlight" class="btn btn-sm btn-outline-secondary me-2">清除高亮</button>
+                <button id="refresh-highlights" class="btn btn-sm btn-outline-info">刷新高亮列表</button>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">高亮颜色</label>
+                <div>
+                  <span class="color-swatch active" style="background-color: #FFFF00;" data-color="#FFFF00"></span>
+                  <span class="color-swatch" style="background-color: #90EE90;" data-color="#90EE90"></span>
+                  <span class="color-swatch" style="background-color: #ADD8E6;" data-color="#ADD8E6"></span>
+                  <span class="color-swatch" style="background-color: #FFB6C1;" data-color="#FFB6C1"></span>
+                  <span class="color-swatch" style="background-color: #E6E6FA;" data-color="#E6E6FA"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 注释选项卡 -->
+          <div class="tab-pane fade" id="annotations" role="tabpanel" aria-labelledby="annotations-tab">
+            <div class="mb-3">
+              <label class="form-label">注释操作</label>
+              <button id="get-annotations" class="btn btn-sm btn-primary mb-2">获取当前页注释</button>
+              
+              <div class="mb-3">
+                <label class="form-label">添加注释</label>
+                <div class="input-group mb-2">
+                  <input type="text" id="annotation-text" class="form-control" placeholder="注释内容">
+                </div>
+                <div class="input-group mb-2">
+                  <span class="input-group-text">位置</span>
+                  <input type="number" id="annotation-x" class="form-control" placeholder="X坐标" value="100">
+                  <input type="number" id="annotation-y" class="form-control" placeholder="Y坐标" value="100">
+                </div>
+                <button id="add-annotation" class="btn btn-sm btn-primary">添加注释</button>
+              </div>
+              
+              <div id="annotations-list" class="mt-3">
+                <label class="form-label">注释列表</label>
+                <div class="annotations-container">
+                  <!-- 注释将在这里动态添加 -->
+                  <div class="text-muted">暂无注释</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 文档选项卡 -->
+          <div class="tab-pane fade" id="document" role="tabpanel" aria-labelledby="document-tab">
+            <div class="mb-3">
+              <label class="form-label">文档信息</label>
+              <button id="get-document-info" class="btn btn-sm btn-primary mb-2">获取文档信息</button>
+              <div id="document-info" class="p-2 bg-light rounded">
+                <div class="text-muted">点击按钮获取文档信息</div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">文档大纲</label>
+              <button id="get-outline" class="btn btn-sm btn-primary mb-2">获取大纲</button>
+              <div id="document-outline" class="p-2 bg-light rounded" style="max-height: 200px; overflow-y: auto;">
+                <div class="text-muted">点击按钮获取文档大纲</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module">
+    // 直接使用源代码中的接口模块，而不是构建后的版本
+    import { MessageType, PDFJSInterface } from '../../web/interface/index.js';
+    
+    // 初始化应用
+    document.addEventListener('DOMContentLoaded', () => {
+      const iframe = document.getElementById('pdf-viewer');
+      let pdfInterface;
+      let currentHighlightColor = '#FFFF00';
+      let pageCount = 0;
+      
+      // 日志功能
+      function log(message, type = 'info') {
+        const logElement = document.getElementById('log');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        
+        const time = document.createElement('span');
+        time.className = 'log-time';
+        time.textContent = new Date().toLocaleTimeString();
+        
+        const msg = document.createElement('span');
+        msg.className = 'log-message';
+        msg.textContent = message;
+        
+        entry.appendChild(time);
+        entry.appendChild(msg);
+        
+        if (type === 'error') {
+          entry.style.color = '#dc3545';
+        } else if (type === 'success') {
+          entry.style.color = '#198754';
+        }
+        
+        logElement.appendChild(entry);
+        logElement.scrollTop = logElement.scrollHeight;
+      }
+      
+      document.getElementById('clear-log').addEventListener('click', () => {
+        document.getElementById('log').innerHTML = '';
+      });
+      
+      // PDF选择器
+      document.getElementById('pdf-select').addEventListener('change', function() {
+        const selectVal = this.value;
+        const pdfUrlInput = document.getElementById('pdf-url');
+        
+        if (selectVal === 'custom') {
+          pdfUrlInput.value = '';
+          pdfUrlInput.focus();
+          pdfUrlInput.disabled = false;
+        } else {
+          pdfUrlInput.value = selectVal;
+          pdfUrlInput.disabled = true;
+        }
+      });
+      
+      // 颜色选择器
+      document.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.addEventListener('click', () => {
+          document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+          swatch.classList.add('active');
+          currentHighlightColor = swatch.dataset.color;
+        });
+      });
+      
+      // 加载PDF
+      document.getElementById('load-pdf').addEventListener('click', () => {
+        let pdfUrl = document.getElementById('pdf-url').value;
+        if (!pdfUrl) return;
+        
+        // 处理路径，确保它是完整的URL
+        if (pdfUrl.startsWith('/') && !pdfUrl.startsWith('http')) {
+          // 添加当前域名，转换为完整URL
+          pdfUrl = window.location.origin + pdfUrl;
+        }
+        
+        log(`正在加载PDF: ${pdfUrl}`);
+        
+        // 重置接口实例（如果存在）
+        if (pdfInterface) {
+          log("重置接口状态");
+          pdfInterface.reset();
+        }
+        
+        // 使用源代码中的viewer.html，而不是构建后的版本，并添加参数以解决跨域问题
+        iframe.src = `../../web/viewer.html?file=${encodeURIComponent(pdfUrl)}&enableXfa=true&disableRange=true&postMessageTransfers=true&debugger=true`;
+        
+        // 获取或创建接口实例（使用单例模式）
+        window.pdfInterface = pdfInterface = PDFJSInterface.getInstance(iframe);
+        
+        pdfInterface.onViewerReady().then(() => {
+          log('PDF查看器已准备就绪', 'success');
+          
+          // 获取总页数
+          pdfInterface.getPageCount().then(count => {
+            pageCount = count;
+            document.getElementById('total-pages').textContent = `/ ${count}`;
+            log(`文档总页数: ${count}`);
+          }).catch(error => {
+            log(`获取页数失败: ${error}`, 'error');
+          });
+          
+          // 获取当前页码
+          updateCurrentPage();
+          
+          // 注册事件监听器
+          pdfInterface.on(MessageType.PAGE_CHANGED, page => {
+            log(`页面已更改: ${page}`);
+            document.getElementById('page-num-input').value = page;
+          });
+          
+          pdfInterface.on(MessageType.DOCUMENT_LOADED, info => {
+            log(`文档已加载: ${info.title || '无标题'}`);
+          });
+          
+          pdfInterface.on(MessageType.ANNOTATION_ADDED, annotation => {
+            log(`添加了注释: ${annotation.content}`);
+            updateAnnotationsList();
+          });
+          
+          pdfInterface.on(MessageType.ANNOTATION_UPDATED, annotation => {
+            log(`更新了注释: ${annotation.content}`);
+            updateAnnotationsList();
+          });
+          
+          pdfInterface.on(MessageType.ANNOTATION_DELETED, id => {
+            log(`删除了注释: ${id}`);
+            updateAnnotationsList();
+          });
+          
+          // 创建高亮UI容器（如果不存在）
+          const container = ensureHighlightTabExists();
+          container.innerHTML = '<div class="text-muted">正在加载高亮...</div>';
+          
+          // 存储高亮的本地集合
+          window.highlightsCollection = window.highlightsCollection || [];
+          
+          // 监听高亮创建事件
+          pdfInterface.on(MessageType.HIGHLIGHT_CREATED, highlight => {
+            log(`创建了高亮: ${highlight.text}`, 'success');
+            // 将新高亮添加到本地集合（避免重复）
+            if (!window.highlightsCollection.some(h => h.id === highlight.id)) {
+              window.highlightsCollection.push(highlight);
+              // 直接更新UI，添加新高亮
+              addHighlightToUI(highlight);
+            }
+          });
+          
+          // 监听高亮删除事件
+          pdfInterface.on(MessageType.HIGHLIGHT_REMOVED, highlightInfo => {
+            log(`移除了高亮: ID ${highlightInfo.id}`);
+            // 从本地集合中移除
+            window.highlightsCollection = window.highlightsCollection.filter(h => h.id !== highlightInfo.id);
+            // 从UI中移除高亮元素
+            removeHighlightFromUI(highlightInfo.id);
+          });
+          
+          // 尝试加载初始高亮
+          try {
+            // 使用消息请求触发所有现有高亮的加载
+            pdfInterface.sendMessage({
+              type: MessageType.GET_ALL_HIGHLIGHTS
+            });
+            
+            // 3秒后，如果没有高亮，显示"暂无高亮标记"
+            setTimeout(() => {
+              if (window.highlightsCollection.length === 0) {
+                const highlightContainer = document.querySelector('.highlights-container');
+                if (highlightContainer) {
+                  highlightContainer.innerHTML = '<div class="text-muted">暂无高亮标记</div>';
+                }
+              }
+            }, 3000);
+          } catch (error) {
+            log(`加载高亮失败: ${error}`, 'warning');
+            // 出错时显示空高亮列表
+            const highlightContainer = document.querySelector('.highlights-container');
+            if (highlightContainer) {
+              highlightContainer.innerHTML = '<div class="text-muted">暂无高亮标记</div>';
+            }
+          }
+        }).catch(error => {
+          log(`接口初始化失败: ${error}`, 'error');
+        });
+      });
+      
+      // 更新当前页码
+      function updateCurrentPage() {
+        if (!pdfInterface) return;
+        
+        pdfInterface.getCurrentPage().then(page => {
+          document.getElementById('page-num-input').value = page;
+        }).catch(error => {
+          log(`获取当前页码失败: ${error}`, 'error');
+        });
+      }
+      
+      // 更新注释列表
+      function updateAnnotationsList() {
+        if (!pdfInterface) return;
+        
+        pdfInterface.getCurrentPage().then(page => {
+          return pdfInterface.getAnnotations(page);
+        }).then(annotations => {
+          const container = document.querySelector('.annotations-container');
+          container.innerHTML = '';
+          
+          if (annotations && annotations.length > 0) {
+            annotations.forEach(annotation => {
+              const box = document.createElement('div');
+              box.className = 'annotation-box';
+              box.innerHTML = `
+                <div><strong>内容:</strong> ${annotation.content}</div>
+                <div><strong>位置:</strong> (${annotation.rect.x}, ${annotation.rect.y})</div>
+                <div class="mt-2">
+                  <button class="btn btn-sm btn-outline-danger delete-annotation" data-id="${annotation.id}">删除</button>
+                </div>
+              `;
+              container.appendChild(box);
+              
+              // 添加删除事件
+              box.querySelector('.delete-annotation').addEventListener('click', () => {
+                pdfInterface.deleteAnnotation(annotation.id).then(() => {
+                  log(`已删除注释: ${annotation.id}`);
+                  updateAnnotationsList();
+                }).catch(error => {
+                  log(`删除注释失败: ${error}`, 'error');
+                });
+              });
+            });
+          } else {
+            container.innerHTML = '<div class="text-muted">暂无注释</div>';
+          }
+        }).catch(error => {
+          log(`获取注释失败: ${error}`, 'error');
+        });
+      }
+      
+      // 确保高亮标签页存在
+      function ensureHighlightTabExists() {
+        // 首先检查是否需要添加高亮标签页
+        let highlightsTab = document.getElementById('highlights-tab');
+        let highlightsPane = document.getElementById('highlights');
+        
+        if (!highlightsTab) {
+          // 如果不存在高亮标签页，则创建一个
+          const tabsList = document.getElementById('controlTabs');
+          highlightsTab = document.createElement('li');
+          highlightsTab.className = 'nav-item';
+          highlightsTab.role = 'presentation';
+          highlightsTab.innerHTML = `
+            <button class="nav-link" id="highlights-tab" data-bs-toggle="tab" 
+                    data-bs-target="#highlights" type="button" role="tab">高亮</button>
+          `;
+          tabsList.appendChild(highlightsTab);
+          
+          // 创建对应的内容面板
+          const tabContent = document.getElementById('controlTabContent');
+          highlightsPane = document.createElement('div');
+          highlightsPane.className = 'tab-pane fade';
+          highlightsPane.id = 'highlights';
+          highlightsPane.role = 'tabpanel';
+          highlightsPane.setAttribute('aria-labelledby', 'highlights-tab');
+          highlightsPane.innerHTML = `
+            <div class="mb-3">
+              <label class="form-label">文档高亮列表</label>
+              <div class="highlights-container"></div>
+            </div>
+          `;
+          tabContent.appendChild(highlightsPane);
+        }
+        
+        return document.querySelector('.highlights-container') || 
+               highlightsPane.querySelector('.highlights-container');
+      }
+      
+      // 将单个高亮添加到UI
+      function addHighlightToUI(highlight) {
+        if (!highlight) return;
+        
+        // 确保高亮标签页存在
+        const container = ensureHighlightTabExists();
+        
+        // 移除"暂无高亮标记"的提示（如果存在）
+        const emptyMessage = container.querySelector('.text-muted');
+        if (emptyMessage) {
+          container.removeChild(emptyMessage);
+        }
+        
+        // 创建高亮元素
+        const box = document.createElement('div');
+        box.className = 'annotation-box';
+        box.id = `highlight-${highlight.id}`;
+        box.style.borderLeft = '4px solid ' + (highlight.color || '#FFFF00');
+        box.innerHTML = `
+          <div><strong>文本:</strong> ${highlight.text}</div>
+          <div><strong>页码:</strong> ${highlight.page}</div>
+          <div class="mt-2">
+            <button class="btn btn-sm btn-outline-secondary goto-highlight" data-page="${highlight.page}">跳转</button>
+            <button class="btn btn-sm btn-outline-danger delete-highlight" data-id="${highlight.id}">删除</button>
+          </div>
+        `;
+        container.appendChild(box);
+        
+        // 添加跳转事件
+        box.querySelector('.goto-highlight').addEventListener('click', () => {
+          if (!pdfInterface) return;
+          pdfInterface.goToPage(highlight.page).then(() => {
+            log(`已跳转到第 ${highlight.page} 页`);
+          }).catch(error => {
+            log(`跳转失败: ${error}`, 'error');
+          });
+        });
+        
+        // 添加删除事件
+        box.querySelector('.delete-highlight').addEventListener('click', () => {
+          if (!pdfInterface) return;
+          pdfInterface.clearHighlight(highlight.id).then(() => {
+            log(`已删除高亮: ${highlight.id}`);
+            // 删除操作成功后，高亮删除事件会被触发，UI会自动更新
+          }).catch(error => {
+            log(`删除高亮失败: ${error}`, 'error');
+          });
+        });
+      }
+      
+      // 从UI中移除高亮
+      function removeHighlightFromUI(highlightId) {
+        if (!highlightId) return;
+        
+        // 查找并移除对应的高亮元素
+        const highlightElement = document.getElementById(`highlight-${highlightId}`);
+        if (highlightElement) {
+          highlightElement.parentNode.removeChild(highlightElement);
+          
+          // 检查是否还有高亮，如果没有则显示"暂无高亮标记"
+          const container = document.querySelector('.highlights-container');
+          if (container && container.children.length === 0) {
+            container.innerHTML = '<div class="text-muted">暂无高亮标记</div>';
+          }
+        }
+      }
+      
+      // 兼容原有的更新高亮列表功能（仅用于手动刷新）
+      function updateHighlightsList() {
+        if (!pdfInterface) return;
+        
+        // 清空现有高亮
+        const container = ensureHighlightTabExists();
+        container.innerHTML = '';
+        
+        // 使用本地集合中的高亮数据
+        if (window.highlightsCollection && window.highlightsCollection.length > 0) {
+          window.highlightsCollection.forEach(highlight => {
+            addHighlightToUI(highlight);
+          });
+        } else {
+          container.innerHTML = '<div class="text-muted">暂无高亮标记</div>';
+        }
+      }
+      
+      // 页面导航
+      document.getElementById('first-page').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.goToPage(1).then(() => {
+          log('已跳转到首页');
+          updateCurrentPage();
+        }).catch(error => {
+          log(`导航失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('last-page').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        if (pageCount > 0) {
+          pdfInterface.goToPage(pageCount).then(() => {
+            log('已跳转到末页');
+            updateCurrentPage();
+          }).catch(error => {
+            log(`导航失败: ${error}`, 'error');
+          });
+        }
+      });
+      
+      document.getElementById('prev-page').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.getCurrentPage().then(page => {
+          if (page > 1) {
+            pdfInterface.goToPage(page - 1).then(() => {
+              log('已跳转到上一页');
+              updateCurrentPage();
+            });
+          }
+        }).catch(error => {
+          log(`导航失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('next-page').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.getCurrentPage().then(page => {
+          if (pageCount > 0 && page < pageCount) {
+            pdfInterface.goToPage(page + 1).then(() => {
+              log('已跳转到下一页');
+              updateCurrentPage();
+            });
+          }
+        }).catch(error => {
+          log(`导航失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('page-num-input').addEventListener('change', (e) => {
+        if (!pdfInterface) return;
+        
+        const pageNumber = parseInt(e.target.value);
+        if (isNaN(pageNumber) || pageNumber < 1 || (pageCount > 0 && pageNumber > pageCount)) {
+          updateCurrentPage();
+          return;
+        }
+        
+        pdfInterface.goToPage(pageNumber).then(() => {
+          log(`已跳转到第${pageNumber}页`);
+        }).catch(error => {
+          log(`导航失败: ${error}`, 'error');
+          updateCurrentPage();
+        });
+      });
+      
+      // 缩放控制
+      document.getElementById('zoom-select').addEventListener('change', (e) => {
+        if (!pdfInterface) return;
+        
+        const scale = e.target.value;
+        pdfInterface.setZoom(scale).then(() => {
+          log(`已设置缩放: ${scale}`);
+        }).catch(error => {
+          log(`设置缩放失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('zoom-in').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.setZoom('in').then(() => {
+          log('已放大');
+        }).catch(error => {
+          log(`放大失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('zoom-out').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.setZoom('out').then(() => {
+          log('已缩小');
+        }).catch(error => {
+          log(`缩小失败: ${error}`, 'error');
+        });
+      });
+      
+      // 文档操作
+      document.getElementById('download-pdf').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.downloadPdf().then(() => {
+          log('已触发下载');
+        }).catch(error => {
+          log(`下载失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('print-pdf').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.printPdf().then(() => {
+          log('已触发打印');
+        }).catch(error => {
+          log(`打印失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('rotate-cw').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.rotatePages(90).then(() => {
+          log('已顺时针旋转');
+        }).catch(error => {
+          log(`旋转失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('rotate-ccw').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.rotatePages(-90).then(() => {
+          log('已逆时针旋转');
+        }).catch(error => {
+          log(`旋转失败: ${error}`, 'error');
+        });
+      });
+      
+      // 搜索与高亮
+      document.getElementById('search-next').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        const text = document.getElementById('search-text').value;
+        if (!text) return;
+        
+        pdfInterface.findText(text, { direction: 'forward' }).then(result => {
+          if (result && result.found) {
+            log(`找到文本: "${text}"`);
+          } else {
+            log(`未找到文本: "${text}"`, 'error');
+          }
+        }).catch(error => {
+          log(`搜索失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('search-prev').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        const text = document.getElementById('search-text').value;
+        if (!text) return;
+        
+        pdfInterface.findText(text, { direction: 'backward' }).then(result => {
+          if (result && result.found) {
+            log(`找到文本: "${text}"`);
+          } else {
+            log(`未找到文本: "${text}"`, 'error');
+          }
+        }).catch(error => {
+          log(`搜索失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('highlight-text').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        const text = document.getElementById('search-text').value;
+        if (!text) return;
+        
+        pdfInterface.setTextHighlight(text, { color: currentHighlightColor }).then(() => {
+          log(`已高亮文本: "${text}"`);
+        }).catch(error => {
+          log(`高亮失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('clear-highlight').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.clearTextHighlight().then(() => {
+          log('已清除所有高亮');
+        }).catch(error => {
+          log(`清除高亮失败: ${error}`, 'error');
+        });
+      });
+      
+      // 刷新高亮列表
+      document.getElementById('refresh-highlights').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        log('正在刷新高亮列表...');
+        
+        // 先清空现有高亮列表
+        const container = ensureHighlightTabExists();
+        container.innerHTML = '<div class="text-muted">正在加载高亮...</div>';
+        
+        // 重置本地集合
+        window.highlightsCollection = [];
+        
+        // 重新触发获取所有高亮
+        try {
+          pdfInterface.sendMessage({
+            type: MessageType.GET_ALL_HIGHLIGHTS
+          });
+          
+          setTimeout(() => {
+            if (window.highlightsCollection.length === 0) {
+              container.innerHTML = '<div class="text-muted">暂无高亮标记</div>';
+              log('刷新完成，未找到高亮');
+            } else {
+              log(`刷新完成，共加载了 ${window.highlightsCollection.length} 个高亮`, 'success');
+            }
+          }, 2000);
+        } catch (error) {
+          log(`刷新高亮失败: ${error}`, 'error');
+          container.innerHTML = '<div class="text-muted">暂无高亮标记</div>';
+        }
+      });
+      
+      // 注释操作
+      document.getElementById('get-annotations').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.getCurrentPage().then(page => {
+          return pdfInterface.getAnnotations(page);
+        }).then(annotations => {
+          log(`获取到${annotations ? annotations.length : 0}个注释`);
+          updateAnnotationsList();
+        }).catch(error => {
+          log(`获取注释失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('add-annotation').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        const content = document.getElementById('annotation-text').value;
+        const x = parseFloat(document.getElementById('annotation-x').value);
+        const y = parseFloat(document.getElementById('annotation-y').value);
+        
+        if (!content) {
+          log('请输入注释内容', 'error');
+          return;
+        }
+        
+        const annotation = {
+          type: 'text',
+          content: content,
+          rect: { x, y, width: 20, height: 20 },
+          color: currentHighlightColor
+        };
+        
+        pdfInterface.addAnnotation(annotation).then(() => {
+          log(`已添加注释: "${content}"`);
+          updateAnnotationsList();
+        }).catch(error => {
+          log(`添加注释失败: ${error}`, 'error');
+        });
+      });
+      
+      // 文档信息
+      document.getElementById('get-document-info').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.getDocumentInfo().then(info => {
+          const infoContainer = document.getElementById('document-info');
+          let html = '';
+          
+          if (info) {
+            html += `<div><strong>标题:</strong> ${info.title || '无'}</div>`;
+            html += `<div><strong>作者:</strong> ${info.author || '无'}</div>`;
+            html += `<div><strong>主题:</strong> ${info.subject || '无'}</div>`;
+            html += `<div><strong>关键词:</strong> ${info.keywords || '无'}</div>`;
+            html += `<div><strong>创建日期:</strong> ${info.creationDate || '无'}</div>`;
+            html += `<div><strong>修改日期:</strong> ${info.modificationDate || '无'}</div>`;
+            html += `<div><strong>创建工具:</strong> ${info.creator || '无'}</div>`;
+            html += `<div><strong>生产商:</strong> ${info.producer || '无'}</div>`;
+          } else {
+            html = '<div class="text-muted">无法获取文档信息</div>';
+          }
+          
+          infoContainer.innerHTML = html;
+          log('已获取文档信息');
+        }).catch(error => {
+          log(`获取文档信息失败: ${error}`, 'error');
+        });
+      });
+      
+      document.getElementById('get-outline').addEventListener('click', () => {
+        if (!pdfInterface) return;
+        pdfInterface.getDocumentOutline().then(outline => {
+          const outlineContainer = document.getElementById('document-outline');
+          
+          if (outline && outline.length > 0) {
+            // 递归构建大纲树
+            function buildOutlineTree(items, level = 0) {
+              let html = '<ul style="padding-left: ' + (level * 15) + 'px">';
+              items.forEach(item => {
+                html += `<li>
+                  <a href="#" class="outline-item" data-dest="${item.dest || ''}">${item.title}</a>
+                  ${item.items && item.items.length > 0 ? buildOutlineTree(item.items, level + 1) : ''}
+                </li>`;
+              });
+              html += '</ul>';
+              return html;
+            }
+            
+            outlineContainer.innerHTML = buildOutlineTree(outline);
+            
+            // 为大纲项添加点击事件
+            document.querySelectorAll('.outline-item').forEach(item => {
+              item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const dest = item.dataset.dest;
+                if (dest) {
+                  pdfInterface._sendMessage('navigateTo', { dest }).then(() => {
+                    log(`已导航到: ${item.textContent}`);
+                    updateCurrentPage();
+                  }).catch(error => {
+                    log(`导航失败: ${error}`, 'error');
+                  });
+                }
+              });
+            });
+          } else {
+            outlineContainer.innerHTML = '<div class="text-muted">文档没有大纲</div>';
+          }
+          
+          log('已获取文档大纲');
+        }).catch(error => {
+          log(`获取文档大纲失败: ${error}`, 'error');
+          document.getElementById('document-outline').innerHTML = '<div class="text-muted">获取大纲失败</div>';
+        });
+      });
+      
+      // 自动加载默认PDF
+      document.getElementById('load-pdf').click();
+    });
+  </script>
+</body>
+</html>

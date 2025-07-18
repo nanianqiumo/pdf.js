@@ -1112,6 +1112,9 @@ function buildGeneric(defines, dir) {
     gulp
       .src(COMMON_WEB_FILES, { base: "web/", encoding: false })
       .pipe(gulp.dest(dir + "web")),
+    gulp
+      .src("web/interface/*.js", { encoding: false })
+      .pipe(gulp.dest(dir + "web/interface")),
     gulp.src("LICENSE", { encoding: false }).pipe(gulp.dest(dir)),
     gulp
       .src(["web/locale/*/viewer.ftl", "web/locale/locale.json"], {
@@ -1620,6 +1623,26 @@ gulp.task("types", function (done) {
   );
 });
 
+gulp.task("interface", function () {
+  console.log();
+  console.log("### Building PDFJSInterface standalone module");
+
+  const INTERFACE_DIR = BUILD_DIR + "interface/";
+  
+  // Clear the interface directory
+  fs.rmSync(INTERFACE_DIR, { recursive: true, force: true });
+  fs.mkdirSync(INTERFACE_DIR, { recursive: true });
+  
+  // Copy the interface files to the build directory
+  return ordered([
+    gulp
+      .src("web/interface/*", { encoding: false })
+      .pipe(gulp.dest(INTERFACE_DIR)),
+  ]);
+});
+
+// interface-package任务已移除，因为接口已直接集成到主包中
+
 function buildLibHelper(bundleDefines, inputStream, outputDir) {
   function preprocessLib(content) {
     const skipBabel = bundleDefines.SKIP_BABEL;
@@ -1773,7 +1796,7 @@ function compressPublish({ sourceDirectory, targetFile, modifiedTime }) {
 
 gulp.task(
   "publish",
-  gulp.series("generic", "generic-legacy", function createPublish(done) {
+  gulp.series("generic", "generic-legacy", "interface", function createPublish(done) {
     const version = JSON.parse(
       fs.readFileSync(BUILD_DIR + "version.json").toString()
     ).version;
@@ -1806,6 +1829,11 @@ gulp.task(
       compressPublish({
         sourceDirectory: GENERIC_LEGACY_DIR,
         targetFile: `pdfjs-${version}-legacy-dist.zip`,
+        modifiedTime: lastCommitDate,
+      }),
+      compressPublish({
+        sourceDirectory: BUILD_DIR + "interface/",
+        targetFile: `pdfjs-${version}-interface.zip`,
         modifiedTime: lastCommitDate,
       }),
     ]);
@@ -2333,11 +2361,19 @@ function packageJson() {
     version: VERSION,
     main: "build/pdf.mjs",
     types: "types/src/pdf.d.ts",
-    description: DIST_DESCRIPTION,
-    keywords: DIST_KEYWORDS,
+    description:
+      DIST_DESCRIPTION + " Includes communication interface for iframe integration.",
+    keywords: [...DIST_KEYWORDS, "interface", "iframe", "communication"],
     homepage: DIST_HOMEPAGE,
     bugs: DIST_BUGS_URL,
     license: DIST_LICENSE,
+    exports: {
+      ".": "./build/pdf.mjs",
+      "./interface": {
+        types: "./interface/pdf_js_interface.d.ts",
+        default: "./interface/pdf_js_interface.js",
+      },
+    },
     optionalDependencies: {
       "@napi-rs/canvas": "^0.1.73",
     },
@@ -2376,6 +2412,7 @@ gulp.task(
     "minified",
     "minified-legacy",
     "types",
+    "interface",
     function createDist() {
       fs.rmSync(DIST_DIR, { recursive: true, force: true });
       fs.mkdirSync(DIST_DIR, { recursive: true });
@@ -2483,6 +2520,14 @@ gulp.task(
         gulp
           .src(TYPES_DIR + "**/*", { base: TYPES_DIR, encoding: false })
           .pipe(gulp.dest(DIST_DIR + "types/")),
+        // 集成interface文件到dist包中
+        gulp
+          .src(BUILD_DIR + "interface/**/*", { encoding: false })
+          .pipe(gulp.dest(DIST_DIR + "interface/")),
+        // 包含web目录下的所有文件（包括viewer.html和相关资源）
+        gulp
+          .src(GENERIC_DIR + "web/**/*", { base: GENERIC_DIR, encoding: false })
+          .pipe(gulp.dest(DIST_DIR)),
       ]);
     }
   )

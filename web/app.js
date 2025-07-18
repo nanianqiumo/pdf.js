@@ -218,6 +218,29 @@ const PDFViewerApplication = {
       docStyle.setProperty("color-scheme", mode);
     }
 
+    // 初始化 MessageHandler，处理与父级 iframe 通信
+    // 使用动态导入（dynamic import）而不是静态导入的原因：
+    // 1. 延迟加载 - MessageHandler 不是初始渲染PDF所必需的，可以在应用初始化后再加载
+    // 2. 条件加载 - 只有在嵌入iframe时才真正需要这个功能
+    // 3. 错误隔离 - 使用.then().catch()链可以优雅地处理模块加载失败的情况
+    // 4. 性能优化 - 减少初始加载时间，提高应用启动速度
+    import("./interface/index.js")
+      .then(module => {
+        const { PDFMessageHandler } = module;
+
+        // 可以通过配置项设置白名单
+        const originWhitelist = AppOptions.get("messageOriginWhitelist");
+
+        this.messageHandler = new PDFMessageHandler({
+          eventBus: this.eventBus,
+          pdfApplication: this,
+          originWhitelist: originWhitelist ? originWhitelist.split(",") : null,
+        });
+      })
+      .catch(error => {
+        console.error("Failed to initialize PDF.js message handler:", error);
+      });
+
     if (typeof PDFJSDev === "undefined" || PDFJSDev.test("TESTING")) {
       if (AppOptions.get("enableFakeMLManager")) {
         this.mlManager =
