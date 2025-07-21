@@ -114,7 +114,7 @@
     <div class="container">
       <div class="row align-items-center">
         <div class="col">
-          <h1><img src="../../web/images/toolbarButton-viewThumbnail.svg" alt="PDF" width="32" height="32" class="me-2">PDF.js 接口演示</h1>
+          <h1><img src="../dist/web/images/toolbarButton-viewThumbnail.svg" alt="PDF" width="32" height="32" class="me-2">PDF.js 接口演示</h1>
           <p class="mb-0">展示如何使用 PDF.js 通信接口控制 PDF 查看器</p>
         </div>
       </div>
@@ -131,12 +131,12 @@
             <div>
               <div class="input-group">
                 <select class="form-select" id="pdf-select" style="max-width: 180px;">
-                  <option value="/test/pdfs/tracemonkey.pdf">测试PDF (服务器)</option>
-                  <option value="example.pdf">示例PDF (本地)</option>
+                  <option value="../test/pdfs/tracemonkey.pdf">测试PDF - TracemonKey</option>
+                  <option value="../test/pdfs/annotation-line.pdf">测试PDF - 注释线</option>
                   <option value="custom">自定义URL...</option>
                 </select>
                 <input type="text" id="pdf-url" class="form-control" placeholder="输入PDF的URL" 
-                  value="/test/pdfs/tracemonkey.pdf">
+                  value="../test/pdfs/tracemonkey.pdf">
                 <button class="btn btn-primary" id="load-pdf">加载</button>
               </div>
             </div>
@@ -314,7 +314,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module">
     // 直接使用源代码中的接口模块，而不是构建后的版本
-    import { MessageType, PDFJSInterface } from '../../web/interface/index.js';
+    import { MessageType, PDFJSInterface } from "../../build/dist/interface/index.js";
     
     // 初始化应用
     document.addEventListener('DOMContentLoaded', () => {
@@ -397,8 +397,8 @@
           pdfInterface.reset();
         }
         
-        // 使用源代码中的viewer.html，而不是构建后的版本，并添加参数以解决跨域问题
-        iframe.src = `../../web/viewer.html?file=${encodeURIComponent(pdfUrl)}&enableXfa=true&disableRange=true&postMessageTransfers=true&debugger=true`;
+        // 使用template下的viewer.html
+        iframe.src = `../dist/web/viewer.html?file=${encodeURIComponent(pdfUrl)}&enableXfa=true&disableRange=true&postMessageTransfers=true&debugger=true`;
         
         // 获取或创建接口实例（使用单例模式）
         window.pdfInterface = pdfInterface = PDFJSInterface.getInstance(iframe);

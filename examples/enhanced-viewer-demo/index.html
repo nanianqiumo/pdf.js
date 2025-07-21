@@ -157,8 +157,9 @@
                 <div class="form-group">
                   <label for="pdf-select" class="form-label">选择PDF文件</label>
                   <select id="pdf-select" class="form-select">
-                    <option value="../../test/pdfs/tracemonkey.pdf">示例PDF (本地)</option>
-                    <option value="../../test/pdfs/annotation-line.pdf">注释演示PDF (本地)</option>
+                    <option value="../test/pdfs/tracemonkey.pdf">示例PDF (本地)</option>
+                    <option value="../test/pdfs/annotation-line.pdf">注释演示PDF (本地)</option>
+                    <option value="../test/pdfs/tracemonkey.pdf">示例PDF (内置)</option>
                     <option value="https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf">示例PDF (在线)</option>
                     <option value="custom">自定义URL...</option>
                     <option value="upload">上传本地PDF文件...</option>
@@ -391,7 +392,8 @@
   <!-- 应用脚本 -->
   <script type="module">
     // 导入增强版PDF查看器
-    import { EnhancedPDFViewer, MessageType } from "../../web/interface/index.js";
+    // 使用已编译的接口，支持ES2022私有字段
+    import { EnhancedPDFViewer, MessageType } from "../../build/dist/interface/index.js";
     
     document.addEventListener("DOMContentLoaded", () => {
       // 初始化变量
@@ -596,6 +598,7 @@
           enablePrint: document.getElementById("enable-print").checked,
           debugger: document.getElementById("enable-debugger").checked,
           initialPage: document.getElementById("initial-page").value,
+          viewerPath: "../../build/dist/web/viewer.html", // 指定正确的viewer路径
         };
         
         log(`正在加载PDF: ${pdfUrl}`);
@@ -637,7 +640,7 @@
         });
         // 存储当前的URL，以便在卸载时释放
         const currentPdfUrl = pdfUrl;
-        
+
         // 加载PDF
         pdfViewer.loadPDF(pdfUrl).then(() => {
           // 如果上一个PDF是通过文件上传加载的，释放其URL

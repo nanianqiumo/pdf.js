@@ -82,6 +82,7 @@ import { PDFFindBar } from "web-pdf_find_bar";
 import { PDFFindController } from "./pdf_find_controller.js";
 import { PDFHistory } from "./pdf_history.js";
 import { PDFLayerViewer } from "web-pdf_layer_viewer";
+import { PDFMessageHandler } from "./interface/pdf_message_handler.js";
 import { PDFOutlineViewer } from "web-pdf_outline_viewer";
 import { PDFPresentationMode } from "web-pdf_presentation_mode";
 import { PDFPrintServiceFactory } from "web-print_service";
@@ -218,29 +219,6 @@ const PDFViewerApplication = {
       docStyle.setProperty("color-scheme", mode);
     }
 
-    // 初始化 MessageHandler，处理与父级 iframe 通信
-    // 使用动态导入（dynamic import）而不是静态导入的原因：
-    // 1. 延迟加载 - MessageHandler 不是初始渲染PDF所必需的，可以在应用初始化后再加载
-    // 2. 条件加载 - 只有在嵌入iframe时才真正需要这个功能
-    // 3. 错误隔离 - 使用.then().catch()链可以优雅地处理模块加载失败的情况
-    // 4. 性能优化 - 减少初始加载时间，提高应用启动速度
-    import("./interface/index.js")
-      .then(module => {
-        const { PDFMessageHandler } = module;
-
-        // 可以通过配置项设置白名单
-        const originWhitelist = AppOptions.get("messageOriginWhitelist");
-
-        this.messageHandler = new PDFMessageHandler({
-          eventBus: this.eventBus,
-          pdfApplication: this,
-          originWhitelist: originWhitelist ? originWhitelist.split(",") : null,
-        });
-      })
-      .catch(error => {
-        console.error("Failed to initialize PDF.js message handler:", error);
-      });
-
     if (typeof PDFJSDev === "undefined" || PDFJSDev.test("TESTING")) {
       if (AppOptions.get("enableFakeMLManager")) {
         this.mlManager =
@@ -287,6 +265,29 @@ const PDFViewerApplication = {
     // initialized, to prevent errors if an event arrives too soon.
     this.bindEvents();
     this.bindWindowEvents();
+
+    // 初始化 MessageHandler，处理与父级 iframe 通信
+    // 现在使用静态导入，但可以通过配置选项控制是否启用
+    // 默认情况下，如果是嵌入式查看器则启用，否则根据配置决定
+    const shouldEnableMessageHandler =
+      AppOptions.get("enableMessageHandler") !== false &&
+      (this.isViewerEmbedded ||
+        AppOptions.get("enableMessageHandler") === true);
+
+    if (shouldEnableMessageHandler) {
+      try {
+        // 可以通过配置项设置白名单
+        const originWhitelist = AppOptions.get("messageOriginWhitelist");
+
+        this.messageHandler = new PDFMessageHandler({
+          eventBus: this.eventBus,
+          pdfApplication: this,
+          originWhitelist: originWhitelist ? originWhitelist.split(",") : null,
+        });
+      } catch (error) {
+        console.error("Failed to initialize PDF.js message handler:", error);
+      }
+    }
 
     this._initializedCapability.settled = true;
     this._initializedCapability.resolve();
@@ -379,6 +380,8 @@ const PDFViewerApplication = {
       disableHistory: x => x === "true",
       disableRange: x => x === "true",
       disableStream: x => x === "true",
+      enableMessageHandler: x => x === "true",
+      messageOriginWhitelist: x => x,
       verbosity: x => x | 0,
     };
 
@@ -751,6 +754,21 @@ const PDFViewerApplication = {
       const queryString = document.location.search.substring(1);
       const params = parseQueryString(queryString);
       file = params.get("file") ?? AppOptions.get("defaultUrl");
+
+      // 处理 MessageHandler 相关的查询参数
+      if (params.has("enablemessagehandler")) {
+        AppOptions.set(
+          "enableMessageHandler",
+          params.get("enablemessagehandler") === "true"
+        );
+      }
+      if (params.has("messageoriginwhitelist")) {
+        AppOptions.set(
+          "messageOriginWhitelist",
+          params.get("messageoriginwhitelist")
+        );
+      }
+
       try {
         file = new URL(decodeURIComponent(file)).href;
       } catch {

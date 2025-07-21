@@ -28,7 +28,7 @@ class EnhancedPDFViewer extends EventEmitter {
    * @private
    * @static
    */
-  static #instances = new WeakMap();
+  static instances = new WeakMap();
 
   /**
    * 获取或创建增强型PDF查看器实例
@@ -51,8 +51,8 @@ class EnhancedPDFViewer extends EventEmitter {
     }
 
     // 检查是否已有实例
-    if (this.#instances.has(containerElement)) {
-      const instance = this.#instances.get(containerElement);
+    if (EnhancedPDFViewer.instances.has(containerElement)) {
+      const instance = EnhancedPDFViewer.instances.get(containerElement);
       // 如果提供了新选项，更新现有实例的选项
       if (options && Object.keys(options).length > 0) {
         // 更新选项，不需要清除事件监听器，因为updateOptions不会注册新的监听器
@@ -66,7 +66,7 @@ class EnhancedPDFViewer extends EventEmitter {
     console.log("EnhancedPDFViewer: 创建新实例");
     // 创建新实例
     const instance = new EnhancedPDFViewer(containerElement, options);
-    this.#instances.set(containerElement, instance);
+    EnhancedPDFViewer.instances.set(containerElement, instance);
     return instance;
   }
 
@@ -274,7 +274,7 @@ class EnhancedPDFViewer extends EventEmitter {
     this.#interface = PDFJSInterface.getInstance(this.#iframe);
 
     // 转发所有事件
-    this.#setupEventForwarding();
+    // this.#setupEventForwarding();
   }
 
   /**
@@ -454,8 +454,8 @@ class EnhancedPDFViewer extends EventEmitter {
       // 使用单例模式获取通信接口实例
       this.#interface = PDFJSInterface.getInstance(this.#iframe);
 
-      // 重新设置事件转发
-      this.#setupEventForwarding();
+      // // 重新设置事件转发
+      // this.#setupEventForwarding();
 
       // 重新设置接口代理
       this.#setupInterfaceProxy();
@@ -519,36 +519,36 @@ class EnhancedPDFViewer extends EventEmitter {
    * 获取增强的接口对象，自动处理ready状态
    * @returns {Proxy<PDFJSInterface>} 代理后的接口对象
    */
-  getEnhancedInterface() {
-    if (!this.#interface) {
-      throw new Error("接口尚未初始化");
-    }
+  // getEnhancedInterface() {
+  //   if (!this.#interface) {
+  //     throw new Error("接口尚未初始化");
+  //   }
 
-    // 创建一个代理，自动为所有方法调用添加ready状态检查
-    return new Proxy(this.#interface, {
-      get: (target, prop) => {
-        const originalValue = target[prop];
+  //   // 创建一个代理，自动为所有方法调用添加ready状态检查
+  //   return new Proxy(this.#interface, {
+  //     get: (target, prop) => {
+  //       const originalValue = target[prop];
 
-        // 如果不是方法或是内部方法，直接返回原值
-        if (
-          typeof originalValue !== "function" ||
-          prop.toString().startsWith("#") ||
-          prop === "ready" ||
-          prop === "ping"
-        ) {
-          return originalValue;
-        }
+  //       // 如果不是方法或是内部方法，直接返回原值
+  //       if (
+  //         typeof originalValue !== "function" ||
+  //         prop.toString().startsWith("#") ||
+  //         prop === "ready" ||
+  //         prop === "ping"
+  //       ) {
+  //         return originalValue;
+  //       }
 
-        // 对方法进行包装，自动确保接口准备就绪
-        return async (...args) => {
-          if (!this.#isReady) {
-            await this.#ensureInterfaceReady();
-          }
-          return originalValue.apply(target, args);
-        };
-      },
-    });
-  }
+  //       // 对方法进行包装，自动确保接口准备就绪
+  //       return async (...args) => {
+  //         if (!this.#isReady) {
+  //           await this.#ensureInterfaceReady();
+  //         }
+  //         return originalValue.apply(target, args);
+  //       };
+  //     },
+  //   });
+  // }
 
   /**
    * 获取当前配置选项
@@ -595,70 +595,70 @@ class EnhancedPDFViewer extends EventEmitter {
 
   // 注意：getCurrentPage, getPageCount, goToPage 方法现在由代理自动处理
 
-  /**
-   * 下一页
-   * @returns {Promise<Object>} 操作结果
-   */
-  async nextPage() {
-    const currentPage = await this.getCurrentPage();
-    const pageCount = await this.getPageCount();
+  // /**
+  //  * 下一页
+  //  * @returns {Promise<Object>} 操作结果
+  //  */
+  // async nextPage() {
+  //   const currentPage = await this.getCurrentPage();
+  //   const pageCount = await this.getPageCount();
 
-    if (currentPage < pageCount) {
-      return this.goToPage(currentPage + 1);
-    }
+  //   if (currentPage < pageCount) {
+  //     return this.goToPage(currentPage + 1);
+  //   }
 
-    return { success: false, message: "已经是最后一页" };
-  }
+  //   return { success: false, message: "已经是最后一页" };
+  // }
 
-  /**
-   * 上一页
-   * @returns {Promise<Object>} 操作结果
-   */
-  async prevPage() {
-    const currentPage = await this.getCurrentPage();
+  // /**
+  //  * 上一页
+  //  * @returns {Promise<Object>} 操作结果
+  //  */
+  // async prevPage() {
+  //   const currentPage = await this.getCurrentPage();
 
-    if (currentPage > 1) {
-      return this.goToPage(currentPage - 1);
-    }
+  //   if (currentPage > 1) {
+  //     return this.goToPage(currentPage - 1);
+  //   }
 
-    return { success: false, message: "已经是第一页" };
-  }
+  //   return { success: false, message: "已经是第一页" };
+  // }
 
-  // 注意: setZoom 方法现在由代理自动处理
+  // // 注意: setZoom 方法现在由代理自动处理
 
-  /**
-   * 放大
-   * @returns {Promise<Object>} 操作结果
-   */
-  async zoomIn() {
-    return this.setZoom("in");
-  }
+  // /**
+  //  * 放大
+  //  * @returns {Promise<Object>} 操作结果
+  //  */
+  // async zoomIn() {
+  //   return this.setZoom("in");
+  // }
 
-  /**
-   * 缩小
-   * @returns {Promise<Object>} 操作结果
-   */
-  async zoomOut() {
-    return this.setZoom("out");
-  }
+  // /**
+  //  * 缩小
+  //  * @returns {Promise<Object>} 操作结果
+  //  */
+  // async zoomOut() {
+  //   return this.setZoom("out");
+  // }
 
-  // 注意: rotatePages 方法现在由代理自动处理
+  // // 注意: rotatePages 方法现在由代理自动处理
 
-  /**
-   * 顺时针旋转
-   * @returns {Promise<Object>} 操作结果
-   */
-  rotateCW() {
-    return this.rotatePages(90);
-  }
+  // /**
+  //  * 顺时针旋转
+  //  * @returns {Promise<Object>} 操作结果
+  //  */
+  // rotateCW() {
+  //   return this.rotatePages(90);
+  // }
 
-  /**
-   * 逆时针旋转
-   * @returns {Promise<Object>} 操作结果
-   */
-  rotateCCW() {
-    return this.rotatePages(-90);
-  }
+  // /**
+  //  * 逆时针旋转
+  //  * @returns {Promise<Object>} 操作结果
+  //  */
+  // rotateCCW() {
+  //   return this.rotatePages(-90);
+  // }
 
   // 注意: findText 方法现在由代理自动处理
   // 注意: 以下方法现在由代理自动处理
@@ -726,7 +726,7 @@ class EnhancedPDFViewer extends EventEmitter {
 
     // 如果需要，从单例管理器中移除此实例
     if (removeFromSingleton && this.#container) {
-      EnhancedPDFViewer.#instances.delete(this.#container);
+      EnhancedPDFViewer.instances.delete(this.#container);
     }
 
     // 清除所有内部引用

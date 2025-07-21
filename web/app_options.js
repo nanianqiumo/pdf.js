@@ -269,6 +269,16 @@ const defaultOptions = {
     value: false,
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
   },
+  enableMessageHandler: {
+    /** @type {boolean} */
+    value: true, // 默认启用，但可以通过配置禁用
+    kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
+  },
+  messageOriginWhitelist: {
+    /** @type {string} */
+    value: "", // 逗号分隔的允许的origin列表，空字符串表示允许所有
+    kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
+  },
   externalLinkRel: {
     /** @type {string} */
     value: "noopener noreferrer nofollow",

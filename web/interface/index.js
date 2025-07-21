@@ -15,22 +15,18 @@
 
 /**
  * PDF.js 接口模块
- *
- * 这个文件作为接口层的入口点，集中导出所有接口组件，便于使用和维护。
- * 用户可以通过这个文件导入所需的所有接口组件，而不需要分别导入各个文件。
+ * 该模块提供了与 PDF.js 查看器的通信接口和相关组件
  *
  * 主要组件：
  * - EnhancedPDFViewer: 增强型PDF查看器，提供更高级的抽象和简化的API
- * - EventEmitter: 事件处理基类，提供事件注册、触发和移除功能
  * - MessageType: 消息类型枚举，定义所有的通信消息类型
  * - PDFJSInterface: PDF.js通信接口，处理与嵌入PDF.js查看器的通信
- * - PDFMessageHandler: PDF消息处理器，处理底层消息传递机制
  */
 import { EnhancedPDFViewer } from "./enhanced_viewer.js";
 import { EventEmitter } from "./event_emitter.js";
 import { MessageType } from "./message_type.js";
 import { PDFJSInterface } from "./pdf_js_interface.js";
-import { PDFMessageHandler } from "./pdf_message_handler.js";
+import { TestPrivateFields } from "./test_private_fields.js";
 
 // 导出所有公共组件
 export {
@@ -38,5 +34,5 @@ export {
   EventEmitter,
   MessageType,
   PDFJSInterface,
-  PDFMessageHandler,
+  TestPrivateFields,
 };

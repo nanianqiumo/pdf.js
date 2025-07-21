@@ -31,6 +31,7 @@ import { DownloadManager } from "./download_manager.js";
 import { EventBus } from "./event_utils.js";
 import { GenericL10n } from "./genericl10n.js";
 import { PDFHistory } from "./pdf_history.js";
+import { PDFMessageHandler } from "./interface/pdf_message_handler.js";
 import { PDFPageView } from "./pdf_page_view.js";
 import { PDFScriptingManager } from "./pdf_scripting_manager.component.js";
 import { PDFSinglePageViewer } from "./pdf_single_page_viewer.js";
@@ -62,6 +63,7 @@ globalThis.pdfjsViewer = {
   StructTreeLayerBuilder,
   TextLayerBuilder,
   XfaLayerBuilder,
+  PDFMessageHandler,
 };
 
 export {
@@ -75,6 +77,7 @@ export {
   PDFFindController,
   PDFHistory,
   PDFLinkService,
+  PDFMessageHandler,
   PDFPageView,
   PDFScriptingManager,
   PDFSinglePageViewer,

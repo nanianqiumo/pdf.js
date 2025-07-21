@@ -651,6 +651,44 @@ function createImageDecodersBundle(defines) {
     .pipe(webpack2Stream(componentsFileConfig));
 }
 
+// // 创建接口捆绑包
+// function createInterfaceBundle(defines) {
+//   // 获取基本配置
+//   const interfaceConfig = createWebpackConfig(defines, {
+//     filename: "interface.mjs",
+//     library: { type: "module" },
+//   });
+
+//   // 确保有正确的babel插件来处理私有字段
+//   if (
+//     interfaceConfig.module &&
+//     interfaceConfig.module.rules &&
+//     interfaceConfig.module.rules.length > 0
+//   ) {
+//     const babelRule = interfaceConfig.module.rules.find(
+//       rule => rule.loader === "babel-loader"
+//     );
+
+//     if (babelRule && babelRule.options) {
+//       // 如果没有plugins数组，创建一个
+//       if (!babelRule.options.plugins) {
+//         babelRule.options.plugins = [];
+//       }
+
+//       // 添加处理私有字段所需的插件
+//       babelRule.options.plugins.push(
+//         "@babel/plugin-transform-class-properties",
+//         "@babel/plugin-transform-private-methods",
+//         "@babel/plugin-transform-private-property-in-object"
+//       );
+//     }
+//   }
+
+//   return gulp
+//     .src("./web/interface/index.js", { encoding: false })
+//     .pipe(webpack2Stream(interfaceConfig));
+// }
+
 function createCMapBundle() {
   return gulp.src(["external/bcmaps/*.bcmap", "external/bcmaps/LICENSE"], {
     base: "external/bcmaps",
@@ -1623,23 +1661,35 @@ gulp.task("types", function (done) {
   );
 });
 
-gulp.task("interface", function () {
-  console.log();
-  console.log("### Building PDFJSInterface standalone module");
+// gulp.task("interface", function () {
+//   console.log();
+//   console.log("### Building PDFJSInterface module");
 
-  const INTERFACE_DIR = BUILD_DIR + "interface/";
-  
-  // Clear the interface directory
-  fs.rmSync(INTERFACE_DIR, { recursive: true, force: true });
-  fs.mkdirSync(INTERFACE_DIR, { recursive: true });
-  
-  // Copy the interface files to the build directory
-  return ordered([
-    gulp
-      .src("web/interface/*", { encoding: false })
-      .pipe(gulp.dest(INTERFACE_DIR)),
-  ]);
-});
+//   const INTERFACE_DIR = BUILD_DIR + "interface/";
+
+//   // Clear the interface directory
+//   fs.rmSync(INTERFACE_DIR, { recursive: true, force: true });
+//   fs.mkdirSync(INTERFACE_DIR, { recursive: true });
+
+//   // 使用与components任务相同的编译方式处理interface文件
+//   const defines = { ...DEFINES, GENERIC: true };
+//   return ordered([
+//     // 使用webpack编译JS文件
+//     createInterfaceBundle(defines).pipe(gulp.dest(INTERFACE_DIR)),
+
+//     // 复制其他非JS文件
+//     gulp
+//       .src(["web/interface/**/*", "!web/interface/**/*.js"], {
+//         encoding: false,
+//       })
+//       .pipe(gulp.dest(INTERFACE_DIR)),
+
+//     // 创建索引文件
+//     createStringSource("index.js", 'export * from "./interface.mjs";\n').pipe(
+//       gulp.dest(INTERFACE_DIR)
+//     ),
+//   ]);
+// });
 
 // interface-package任务已移除，因为接口已直接集成到主包中
 
@@ -1796,48 +1846,53 @@ function compressPublish({ sourceDirectory, targetFile, modifiedTime }) {
 
 gulp.task(
   "publish",
-  gulp.series("generic", "generic-legacy", "interface", function createPublish(done) {
-    const version = JSON.parse(
-      fs.readFileSync(BUILD_DIR + "version.json").toString()
-    ).version;
+  gulp.series(
+    "generic",
+    "generic-legacy",
+    // "interface",
+    function createPublish(done) {
+      const version = JSON.parse(
+        fs.readFileSync(BUILD_DIR + "version.json").toString()
+      ).version;
 
-    config.stableVersion = version;
+      config.stableVersion = version;
 
-    // ZIP files record the modification date of the source files, so if files
-    // are generated during the build process the output is not reproducible.
-    // To avoid this, the modification dates should be replaced with a fixed
-    // date, in our case the last Git commit date, so that builds from identical
-    // source code result in bit-by-bit identical output. The `gulp-zip` library
-    // supports providing a different modification date to enable reproducible
-    // builds. Note that the Git command below outputs the last Git commit date
-    // as a Unix timestamp (in seconds since epoch), but the `Date` constructor
-    // in JavaScript requires millisecond input, so we have to multiply by 1000.
-    const lastCommitTimestamp = execSync('git log --format="%at" -n 1')
-      .toString()
-      .replace("\n", "");
-    const lastCommitDate = new Date(parseInt(lastCommitTimestamp, 10) * 1000);
+      // ZIP files record the modification date of the source files, so if files
+      // are generated during the build process the output is not reproducible.
+      // To avoid this, the modification dates should be replaced with a fixed
+      // date, in our case the last Git commit date, so that builds from identical
+      // source code result in bit-by-bit identical output. The `gulp-zip` library
+      // supports providing a different modification date to enable reproducible
+      // builds. Note that the Git command below outputs the last Git commit date
+      // as a Unix timestamp (in seconds since epoch), but the `Date` constructor
+      // in JavaScript requires millisecond input, so we have to multiply by 1000.
+      const lastCommitTimestamp = execSync('git log --format="%at" -n 1')
+        .toString()
+        .replace("\n", "");
+      const lastCommitDate = new Date(parseInt(lastCommitTimestamp, 10) * 1000);
 
-    return ordered([
-      createStringSource(CONFIG_FILE, JSON.stringify(config, null, 2)).pipe(
-        gulp.dest(".")
-      ),
-      compressPublish({
-        sourceDirectory: GENERIC_DIR,
-        targetFile: `pdfjs-${version}-dist.zip`,
-        modifiedTime: lastCommitDate,
-      }),
-      compressPublish({
-        sourceDirectory: GENERIC_LEGACY_DIR,
-        targetFile: `pdfjs-${version}-legacy-dist.zip`,
-        modifiedTime: lastCommitDate,
-      }),
-      compressPublish({
-        sourceDirectory: BUILD_DIR + "interface/",
-        targetFile: `pdfjs-${version}-interface.zip`,
-        modifiedTime: lastCommitDate,
-      }),
-    ]);
-  })
+      return ordered([
+        createStringSource(CONFIG_FILE, JSON.stringify(config, null, 2)).pipe(
+          gulp.dest(".")
+        ),
+        compressPublish({
+          sourceDirectory: GENERIC_DIR,
+          targetFile: `pdfjs-${version}-dist.zip`,
+          modifiedTime: lastCommitDate,
+        }),
+        compressPublish({
+          sourceDirectory: GENERIC_LEGACY_DIR,
+          targetFile: `pdfjs-${version}-legacy-dist.zip`,
+          modifiedTime: lastCommitDate,
+        }),
+        compressPublish({
+          sourceDirectory: BUILD_DIR + "interface/",
+          targetFile: `pdfjs-${version}-interface.zip`,
+          modifiedTime: lastCommitDate,
+        }),
+      ]);
+    }
+  )
 );
 
 function setTestEnv(done) {
@@ -2226,14 +2281,14 @@ gulp.task(
       console.log();
       console.log("### Starting local server");
 
-      let port = 8888;
+      let port = 8889;
       const i = process.argv.indexOf("--port");
       if (i >= 0 && i + 1 < process.argv.length) {
         const p = parseInt(process.argv[i + 1], 10);
         if (!isNaN(p)) {
           port = p;
         } else {
-          console.error("Invalid port number: using default (8888)");
+          console.error("Invalid port number: using default (8889)");
         }
       }
 
@@ -2348,7 +2403,7 @@ gulp.task(
 function packageJson() {
   const VERSION = getVersionJSON().version;
 
-  const DIST_NAME = "pdfjs-dist";
+  const DIST_NAME = "pdfjs-editor";
   const DIST_DESCRIPTION = "Generic build of Mozilla's PDF.js library.";
   const DIST_KEYWORDS = ["Mozilla", "pdf", "pdf.js"];
   const DIST_HOMEPAGE = "https://mozilla.github.io/pdf.js/";
@@ -2362,17 +2417,28 @@ function packageJson() {
     main: "build/pdf.mjs",
     types: "types/src/pdf.d.ts",
     description:
-      DIST_DESCRIPTION + " Includes communication interface for iframe integration.",
-    keywords: [...DIST_KEYWORDS, "interface", "iframe", "communication"],
+      DIST_DESCRIPTION +
+      " Includes communication interface for iframe integration and demo examples.",
+    keywords: [
+      ...DIST_KEYWORDS,
+      "interface",
+      "iframe",
+      "communication",
+      "viewer",
+      "demo",
+    ],
     homepage: DIST_HOMEPAGE,
     bugs: DIST_BUGS_URL,
     license: DIST_LICENSE,
     exports: {
       ".": "./build/pdf.mjs",
       "./interface": {
-        types: "./interface/pdf_js_interface.d.ts",
-        default: "./interface/pdf_js_interface.js",
+        default: "./interface/index.js",
       },
+      "./web/viewer.html": "./web/viewer.html",
+      "./examples/interface-demo": "./examples/interface-demo/index.html",
+      "./examples/enhanced-viewer-demo":
+        "./examples/enhanced-viewer-demo/index.html",
     },
     optionalDependencies: {
       "@napi-rs/canvas": "^0.1.73",
@@ -2412,7 +2478,7 @@ gulp.task(
     "minified",
     "minified-legacy",
     "types",
-    "interface",
+    // "interface",
     function createDist() {
       fs.rmSync(DIST_DIR, { recursive: true, force: true });
       fs.mkdirSync(DIST_DIR, { recursive: true });
@@ -2520,14 +2586,56 @@ gulp.task(
         gulp
           .src(TYPES_DIR + "**/*", { base: TYPES_DIR, encoding: false })
           .pipe(gulp.dest(DIST_DIR + "types/")),
-        // 集成interface文件到dist包中
+        // 集成编译后的interface文件到dist包中
         gulp
           .src(BUILD_DIR + "interface/**/*", { encoding: false })
           .pipe(gulp.dest(DIST_DIR + "interface/")),
-        // 包含web目录下的所有文件（包括viewer.html和相关资源）
+        // 包含web目录下的核心文件（不覆盖前面已处理的内容）
         gulp
-          .src(GENERIC_DIR + "web/**/*", { base: GENERIC_DIR, encoding: false })
-          .pipe(gulp.dest(DIST_DIR)),
+          .src(
+            [
+              GENERIC_DIR + "web/viewer.html",
+              GENERIC_DIR + "web/viewer.css",
+              GENERIC_DIR + "web/viewer.mjs",
+              GENERIC_DIR + "web/debugger.{css,mjs}",
+              GENERIC_DIR + "web/compressed.tracemonkey-pldi-09.pdf",
+            ],
+            { encoding: false }
+          )
+          .pipe(gulp.dest(DIST_DIR + "web/")),
+        // 包含已编译的web接口文件
+        gulp
+          .src(BUILD_DIR + "interface/**/*", {
+            encoding: false,
+          })
+          .pipe(gulp.dest(DIST_DIR + "web/interface")),
+        // 包含web图像文件
+        gulp
+          .src(GENERIC_DIR + "web/images/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(DIST_DIR + "web/")),
+        // 包含locale文件
+        gulp
+          .src(GENERIC_DIR + "web/locale/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(DIST_DIR + "web/")),
+        // 包含演示页面，方便用户测试集成
+        // gulp
+        //   .src("examples/interface-demo/**/*", {
+        //     base: "examples",
+        //     encoding: false,
+        //   })
+        //   .pipe(gulp.dest(DIST_DIR + "examples/")),
+        // gulp
+        //   .src("examples/enhanced-viewer-demo/**/*", {
+        //     base: "examples",
+        //     encoding: false,
+        //   })
+        //   .pipe(gulp.dest(DIST_DIR + "examples/")),
       ]);
     }
   )
