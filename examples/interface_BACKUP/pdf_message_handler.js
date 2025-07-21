@@ -26,13 +26,13 @@ class PDFMessageHandler {
    * @type {PDFApplication} The PDFApplication instance
    * @private
    */
-  pdfApplication = null;
+  #pdfApplication = null;
 
   /**
    * @type {EventBus} The event bus to use for event dispatching
    * @private
    */
-  eventBus = null;
+  #eventBus = null;
 
   /**
    * @param {Object} options - 配置选项
@@ -41,15 +41,15 @@ class PDFMessageHandler {
    * @param {Array<string>} [options.originWhitelist] - 允许的消息来源白名单
    */
   constructor({ eventBus, pdfApplication, originWhitelist = null }) {
-    this.pdfApplication = pdfApplication;
-    this.eventBus = eventBus;
+    this.#pdfApplication = pdfApplication;
+    this.#eventBus = eventBus;
 
     // Add the message listener
-    window.addEventListener("message", this._handleMessage.bind(this));
+    window.addEventListener("message", this.#handleMessage.bind(this));
 
     // Setup internal event listeners
-    if (this.eventBus) {
-      this._setupInternalEventListeners();
+    if (this.#eventBus) {
+      this.#setupInternalEventListeners();
     } else {
       console.warn(
         "PDFMessageHandler: eventBus is undefined, event forwarding is disabled"
@@ -61,32 +61,32 @@ class PDFMessageHandler {
    * Setup internal event listeners for PDF.js events
    * @private
    */
-  _setupInternalEventListeners() {
+  #setupInternalEventListeners() {
     // Listen for document loaded event
-    this.eventBus.on("documentloaded", () => {
-      this._sendMessage({
+    this.#eventBus.on("documentloaded", () => {
+      this.#sendMessage({
         type: MessageType.PDFJS_INTERFACE_READY,
         data: {
           version:
             typeof PDFJSDev !== "undefined"
               ? PDFJSDev.eval("BUNDLE_VERSION")
               : null,
-          title: this.pdfApplication._title,
-          numPages: this.pdfApplication.pagesCount,
+          title: this.#pdfApplication._title,
+          numPages: this.#pdfApplication.pagesCount,
         },
       });
-      //   this._sendMessage({
+      //   this.#sendMessage({
       //     type: MessageType.DOCUMENT_LOADED,
       //     data: {
-      //       title: this.pdfApplication._title,
-      //       numPages: this.pdfApplication.pagesCount,
+      //       title: this.#pdfApplication._title,
+      //       numPages: this.#pdfApplication.pagesCount,
       //     },
       //   });
     });
 
     // Listen for highlight events
-    this.eventBus.on("highlightCreated", event => {
-      this._sendMessage({
+    this.#eventBus.on("highlightCreated", event => {
+      this.#sendMessage({
         type: MessageType.HIGHLIGHT_CREATED,
         data: {
           id: event.id,
@@ -98,7 +98,7 @@ class PDFMessageHandler {
     });
 
     // // 注册文本选择事件，用于触发高亮
-    // this.eventBus.on("textlayerrendered", () => {
+    // this.#eventBus.on("textlayerrendered", () => {
     //   const container = document.getElementById("viewerContainer");
     //   if (!container) {
     //     return;
@@ -124,8 +124,8 @@ class PDFMessageHandler {
     //   }
     // });
 
-    this.eventBus.on("highlightRemoved", event => {
-      this._sendMessage({
+    this.#eventBus.on("highlightRemoved", event => {
+      this.#sendMessage({
         type: MessageType.HIGHLIGHT_REMOVED,
         data: {
           id: event.id,
@@ -135,8 +135,8 @@ class PDFMessageHandler {
     });
 
     // Listen for page rendered event
-    this.eventBus.on("pagerendered", event => {
-      this._sendMessage({
+    this.#eventBus.on("pagerendered", event => {
+      this.#sendMessage({
         type: MessageType.PAGE_RENDERED,
         data: {
           pageNumber: event.pageNumber,
@@ -146,30 +146,30 @@ class PDFMessageHandler {
     });
 
     // Listen for page changed event
-    this.eventBus.on("pagechanging", event => {
-      this._sendMessage({
+    this.#eventBus.on("pagechanging", event => {
+      this.#sendMessage({
         type: MessageType.PAGE_CHANGED,
         data: event.pageNumber,
       });
     });
 
     // Listen for annotation events
-    this.eventBus.on("annotationadded", event => {
-      this._sendMessage({
+    this.#eventBus.on("annotationadded", event => {
+      this.#sendMessage({
         type: MessageType.ANNOTATION_ADDED,
         data: event.annotation,
       });
     });
 
-    this.eventBus.on("annotationupdated", event => {
-      this._sendMessage({
+    this.#eventBus.on("annotationupdated", event => {
+      this.#sendMessage({
         type: MessageType.ANNOTATION_UPDATED,
         data: event.annotation,
       });
     });
 
-    this.eventBus.on("annotationdeleted", event => {
-      this._sendMessage({
+    this.#eventBus.on("annotationdeleted", event => {
+      this.#sendMessage({
         type: MessageType.ANNOTATION_DELETED,
         data: {
           id: event.id,
@@ -183,7 +183,7 @@ class PDFMessageHandler {
    * @param {MessageEvent} event - The message event
    * @private
    */
-  _handleMessage(event) {
+  #handleMessage(event) {
     // Skip messages from our own window or that don't have the expected format
     if (
       event.source === window ||
@@ -197,11 +197,11 @@ class PDFMessageHandler {
     const { type, data, requestId } = event.data;
 
     // Process the message
-    this._processMessage(type, data, requestId).then(
+    this.#processMessage(type, data, requestId).then(
       response => {
         // If there's a requestId, send a response
         if (requestId) {
-          this._sendMessage({
+          this.#sendMessage({
             type,
             data: response,
             requestId,
@@ -211,7 +211,7 @@ class PDFMessageHandler {
       error => {
         // If there's an error and a requestId, send an error response
         if (requestId) {
-          this._sendMessage({
+          this.#sendMessage({
             type: `${type}.error`,
             data: {
               message: error.message,
@@ -229,7 +229,7 @@ class PDFMessageHandler {
    * @param {Object} message - The message to send
    * @private
    */
-  _sendMessage(message) {
+  #sendMessage(message) {
     // Skip if we're in a main window and not an iframe
     if (window.parent === window) {
       console.warn("PDFMessageHandler: 不在iframe中，消息未发送");
@@ -252,93 +252,93 @@ class PDFMessageHandler {
    * @returns {Promise<any>} - The response
    * @private
    */
-  async _processMessage(type, data, requestId) {
+  async #processMessage(type, data, requestId) {
     let response;
 
     try {
       switch (type) {
         case MessageType.GET_HIGHLIGHTS:
-          response = await this._getAllHighlights();
+          response = await this.#getAllHighlights();
           break;
 
         case MessageType.CLEAR_HIGHLIGHTS:
-          response = await this._clearAllHighlights();
+          response = await this.#clearAllHighlights();
           break;
 
         case MessageType.CLEAR_HIGHLIGHT:
-          response = await this._clearHighlight(data.id);
+          response = await this.#clearHighlight(data.id);
           break;
 
         case MessageType.GET_TEXT:
-          response = await this._getAllText();
+          response = await this.#getAllText();
           break;
 
         case MessageType.GET_PAGE_TEXT:
-          response = await this._getPageText(data.page);
+          response = await this.#getPageText(data.page);
           break;
 
         case MessageType.GET_CURRENT_PAGE:
-          response = this._getCurrentPage();
+          response = this.#getCurrentPage();
           break;
 
         case MessageType.GET_PAGE_COUNT:
-          response = this._getPageCount();
+          response = this.#getPageCount();
           break;
 
         case MessageType.GO_TO_PAGE:
-          response = await this._goToPage(data.pageNumber);
+          response = await this.#goToPage(data.pageNumber);
           break;
 
         case MessageType.SET_TEXT_HIGHLIGHT:
-          response = await this._setTextHighlight(data.text, data.options);
+          response = await this.#setTextHighlight(data.text, data.options);
           break;
 
         case MessageType.CLEAR_TEXT_HIGHLIGHT:
-          response = await this._clearTextHighlight();
+          response = await this.#clearTextHighlight();
           break;
 
         case MessageType.FIND_TEXT:
-          response = await this._findText(data.text, data.options);
+          response = await this.#findText(data.text, data.options);
           break;
 
         case MessageType.GET_DOCUMENT_INFO:
-          response = this._getDocumentInfo();
+          response = this.#getDocumentInfo();
           break;
 
         case MessageType.GET_DOCUMENT_OUTLINE:
-          response = await this._getDocumentOutline();
+          response = await this.#getDocumentOutline();
           break;
 
         case MessageType.GET_ANNOTATIONS:
-          response = await this._getAnnotations(data.pageNumber);
+          response = await this.#getAnnotations(data.pageNumber);
           break;
 
         case MessageType.ADD_ANNOTATION:
-          response = await this._addAnnotation(data.annotation);
+          response = await this.#addAnnotation(data.annotation);
           break;
 
         case MessageType.UPDATE_ANNOTATION:
-          response = await this._updateAnnotation(data.annotation);
+          response = await this.#updateAnnotation(data.annotation);
           break;
 
         case MessageType.DELETE_ANNOTATION:
-          response = await this._deleteAnnotation(data.annotationId);
+          response = await this.#deleteAnnotation(data.annotationId);
           break;
 
         case MessageType.SET_ZOOM:
-          response = await this._setZoom(data.scale);
+          response = await this.#setZoom(data.scale);
           break;
 
         case MessageType.ROTATE_PAGES:
-          response = await this._rotatePages(data.rotation);
+          response = await this.#rotatePages(data.rotation);
           break;
 
         case MessageType.DOWNLOAD_PDF:
-          response = await this._downloadPdf();
+          response = await this.#downloadPdf();
           break;
 
         case MessageType.PRINT_PDF:
-          response = await this._printPdf();
+          response = await this.#printPdf();
           break;
 
         case MessageType.PING:
@@ -346,7 +346,7 @@ class PDFMessageHandler {
           break;
 
         case MessageType.NAVIGATE_TO:
-          response = await this._navigateTo(data.dest);
+          response = await this.#navigateTo(data.dest);
           break;
 
         case MessageType.CHECK_READY:
@@ -368,9 +368,9 @@ class PDFMessageHandler {
    * Get all highlights from the document
    * @returns {Promise<Array>} Array of highlight objects
    */
-  async _getAllHighlights() {
+  async #getAllHighlights() {
     const annotationStorage =
-      this.pdfApplication.pdfDocument?.annotationStorage;
+      this.#pdfApplication.pdfDocument?.annotationStorage;
     if (!annotationStorage) {
       return [];
     }
@@ -395,11 +395,11 @@ class PDFMessageHandler {
    * Clear all highlights from the document
    * @returns {Promise<Object>} Result of the operation
    */
-  async _clearAllHighlights() {
+  async #clearAllHighlights() {
     // 获取当前高亮
-    const highlights = await this._getAllHighlights();
+    const highlights = await this.#getAllHighlights();
     const annotationStorage =
-      this.pdfApplication.pdfDocument?.annotationStorage;
+      this.#pdfApplication.pdfDocument?.annotationStorage;
 
     if (!annotationStorage) {
       return { success: false, error: "PDF annotationStorage not available" };
@@ -429,9 +429,9 @@ class PDFMessageHandler {
    * @param {string} id - The ID of the highlight to clear
    * @returns {Promise<Object>} Result of the operation
    */
-  async _clearHighlight(id) {
+  async #clearHighlight(id) {
     const annotationEditor =
-      this.pdfApplication.pdfDocument?.annotationStorage?.getRawValue(id);
+      this.#pdfApplication.pdfDocument?.annotationStorage?.getRawValue(id);
     if (!annotationEditor) {
       return { success: false, error: "Required resources not available" };
     }
@@ -444,9 +444,9 @@ class PDFMessageHandler {
    * Get text content from all pages
    * @returns {Promise<Array<{page: number, text: string}>>}
    */
-  async _getAllText() {
+  async #getAllText() {
     const textContent = [];
-    const pdfDocument = this.pdfApplication.pdfDocument;
+    const pdfDocument = this.#pdfApplication.pdfDocument;
 
     if (!pdfDocument) {
       return textContent;
@@ -454,7 +454,7 @@ class PDFMessageHandler {
 
     for (let i = 1; i <= pdfDocument.numPages; i++) {
       try {
-        const text = await this._getPageText(i);
+        const text = await this.#getPageText(i);
         textContent.push(text);
       } catch (error) {
         console.error(`Error getting text for page ${i}:`, error);
@@ -470,8 +470,8 @@ class PDFMessageHandler {
    * @param {number} pageNumber - The page number (1-based)
    * @returns {Promise<{page: number, text: string}>}
    */
-  async _getPageText(pageNumber) {
-    const pdfDocument = this.pdfApplication.pdfDocument;
+  async #getPageText(pageNumber) {
+    const pdfDocument = this.#pdfApplication.pdfDocument;
 
     if (!pdfDocument || pageNumber < 1 || pageNumber > pdfDocument.numPages) {
       throw new Error(`Invalid page number: ${pageNumber}`);
@@ -488,16 +488,16 @@ class PDFMessageHandler {
    * Get the current page number
    * @returns {number} The current page number (1-based)
    */
-  _getCurrentPage() {
-    return this.pdfApplication.page || 1;
+  #getCurrentPage() {
+    return this.#pdfApplication.page || 1;
   }
 
   /**
    * Get the total number of pages in the document
    * @returns {number} The page count
    */
-  _getPageCount() {
-    return this.pdfApplication.pagesCount || 0;
+  #getPageCount() {
+    return this.#pdfApplication.pagesCount || 0;
   }
 
   /**
@@ -505,16 +505,16 @@ class PDFMessageHandler {
    * @param {number} pageNumber - The page number to navigate to (1-based)
    * @returns {Promise<{success: boolean}>} Success status
    */
-  async _goToPage(pageNumber) {
-    if (!this.pdfApplication.pdfDocument) {
+  async #goToPage(pageNumber) {
+    if (!this.#pdfApplication.pdfDocument) {
       throw new Error("No document loaded");
     }
 
-    if (pageNumber < 1 || pageNumber > this.pdfApplication.pagesCount) {
+    if (pageNumber < 1 || pageNumber > this.#pdfApplication.pagesCount) {
       throw new Error(`Invalid page number: ${pageNumber}`);
     }
 
-    this.pdfApplication.page = pageNumber;
+    this.#pdfApplication.page = pageNumber;
     return { success: true, page: pageNumber };
   }
 
@@ -524,35 +524,35 @@ class PDFMessageHandler {
    * @param {Object} options - Highlight options
    * @returns {Promise<{success: boolean, count: number}>} Success status and match count
    */
-  async _setTextHighlight(text, options = {}) {
-    if (!this.pdfApplication.pdfDocument || !text) {
+  async #setTextHighlight(text, options = {}) {
+    if (!this.#pdfApplication.pdfDocument || !text) {
       throw new Error("No document loaded or empty search text");
     }
 
     // 获取当前页面
-    const currentPage = this.pdfApplication.page || 1;
+    const currentPage = this.#pdfApplication.page || 1;
     const color = options.color || "#FFFF00"; // 默认黄色
 
     try {
       // 使用findBar查找文本（这是一种临时的解决方案）
-      this.pdfApplication.findBar.open();
-      this.pdfApplication.findBar.findField.value = text;
+      this.#pdfApplication.findBar.open();
+      this.#pdfApplication.findBar.findField.value = text;
 
       // 设置高亮颜色（如果支持）
-      if (this.pdfApplication.findBar.highlightColor) {
-        this.pdfApplication.findBar.highlightColor = color;
+      if (this.#pdfApplication.findBar.highlightColor) {
+        this.#pdfApplication.findBar.highlightColor = color;
       }
 
       // 触发搜索
-      this.pdfApplication.findBar.highlightAllCheckbox.checked = true;
-      this.pdfApplication.findBar.findNextButton.click();
+      this.#pdfApplication.findBar.highlightAllCheckbox.checked = true;
+      this.#pdfApplication.findBar.findNextButton.click();
 
       // 创建唯一ID
       const highlightId = `highlight_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
       // 触发自定义高亮创建事件
       setTimeout(() => {
-        this.eventBus.dispatch("highlightCreated", {
+        this.#eventBus.dispatch("highlightCreated", {
           source: this,
           id: highlightId,
           page: currentPage,
@@ -578,9 +578,9 @@ class PDFMessageHandler {
    * Clear all text highlights
    * @returns {Promise<{success: boolean}>} Success status
    */
-  async _clearTextHighlight() {
-    if (this.pdfApplication.findBar) {
-      this.pdfApplication.findBar.close();
+  async #clearTextHighlight() {
+    if (this.#pdfApplication.findBar) {
+      this.#pdfApplication.findBar.close();
     }
     return { success: true };
   }
@@ -591,13 +591,13 @@ class PDFMessageHandler {
    * @param {Object} options - Find options
    * @returns {Promise<{found: boolean, page?: number}>} Find result
    */
-  async _findText(text, options = {}) {
-    if (!this.pdfApplication.pdfDocument || !text) {
+  async #findText(text, options = {}) {
+    if (!this.#pdfApplication.pdfDocument || !text) {
       throw new Error("No document loaded or empty search text");
     }
 
     // Configure find controller
-    const findController = this.pdfApplication.findController;
+    const findController = this.#pdfApplication.findController;
     findController.caseSensitive = !!options.caseSensitive;
     findController.entireWord = !!options.wholeWord;
 
@@ -633,14 +633,14 @@ class PDFMessageHandler {
    * Get document metadata and info
    * @returns {Object} Document information
    */
-  _getDocumentInfo() {
-    const doc = this.pdfApplication.pdfDocument;
+  #getDocumentInfo() {
+    const doc = this.#pdfApplication.pdfDocument;
     if (!doc) {
       throw new Error("No document loaded");
     }
 
     return {
-      title: this.pdfApplication._title || "",
+      title: this.#pdfApplication._title || "",
       author: doc.info?.Author || "",
       subject: doc.info?.Subject || "",
       keywords: doc.info?.Keywords || "",
@@ -656,8 +656,8 @@ class PDFMessageHandler {
    * Get document outline/bookmarks
    * @returns {Promise<Array>} Document outline items
    */
-  async _getDocumentOutline() {
-    const doc = this.pdfApplication.pdfDocument;
+  async #getDocumentOutline() {
+    const doc = this.#pdfApplication.pdfDocument;
     if (!doc) {
       throw new Error("No document loaded");
     }
@@ -671,8 +671,8 @@ class PDFMessageHandler {
    * @param {number} pageNumber - Page number (1-based)
    * @returns {Promise<Array>} Array of annotations
    */
-  async _getAnnotations(pageNumber) {
-    const doc = this.pdfApplication.pdfDocument;
+  async #getAnnotations(pageNumber) {
+    const doc = this.#pdfApplication.pdfDocument;
     if (!doc) {
       throw new Error("No document loaded");
     }
@@ -701,7 +701,7 @@ class PDFMessageHandler {
    * @param {Object} annotation - Annotation data
    * @returns {Promise<Object>} The added annotation
    */
-  async _addAnnotation(annotation) {
+  async #addAnnotation(annotation) {
     // This would need to be implemented with PDF.js annotation APIs
     throw new Error("Add annotation not implemented yet");
   }
@@ -711,7 +711,7 @@ class PDFMessageHandler {
    * @param {Object} annotation - Annotation data with id
    * @returns {Promise<Object>} The updated annotation
    */
-  async _updateAnnotation(annotation) {
+  async #updateAnnotation(annotation) {
     // This would need to be implemented with PDF.js annotation APIs
     throw new Error("Update annotation not implemented yet");
   }
@@ -721,7 +721,7 @@ class PDFMessageHandler {
    * @param {string} annotationId - ID of the annotation to delete
    * @returns {Promise<{success: boolean}>} Success status
    */
-  async _deleteAnnotation(annotationId) {
+  async #deleteAnnotation(annotationId) {
     // This would need to be implemented with PDF.js annotation APIs
     throw new Error("Delete annotation not implemented yet");
   }
@@ -731,16 +731,16 @@ class PDFMessageHandler {
    * @param {string|number} scale - The zoom value
    * @returns {Promise<{success: boolean}>} Success status
    */
-  async _setZoom(scale) {
+  async #setZoom(scale) {
     try {
       if (typeof scale === "number") {
-        this.pdfApplication.pdfViewer.currentScaleValue = scale;
+        this.#pdfApplication.pdfViewer.currentScaleValue = scale;
       } else if (scale === "in") {
-        this.pdfApplication.zoomIn();
+        this.#pdfApplication.zoomIn();
       } else if (scale === "out") {
-        this.pdfApplication.zoomOut();
+        this.#pdfApplication.zoomOut();
       } else {
-        this.pdfApplication.pdfViewer.currentScaleValue = scale;
+        this.#pdfApplication.pdfViewer.currentScaleValue = scale;
       }
       return { success: true, scale };
     } catch (error) {
@@ -754,10 +754,10 @@ class PDFMessageHandler {
    * @param {number} rotation - Rotation angle in degrees
    * @returns {Promise<{success: boolean}>} Success status
    */
-  async _rotatePages(rotation) {
+  async #rotatePages(rotation) {
     try {
       const delta = rotation;
-      this.pdfApplication.rotatePages(delta);
+      this.#pdfApplication.rotatePages(delta);
       return { success: true, rotation: delta };
     } catch (error) {
       console.error("Error rotating pages:", error);
@@ -769,9 +769,9 @@ class PDFMessageHandler {
    * Download the current PDF
    * @returns {Promise<{success: boolean}>} Success status
    */
-  async _downloadPdf() {
+  async #downloadPdf() {
     try {
-      this.pdfApplication.download();
+      this.#pdfApplication.download();
       return { success: true };
     } catch (error) {
       console.error("Error downloading PDF:", error);
@@ -783,9 +783,9 @@ class PDFMessageHandler {
    * Print the current PDF
    * @returns {Promise<{success: boolean}>} Success status
    */
-  async _printPdf() {
+  async #printPdf() {
     try {
-      this.pdfApplication.print();
+      this.#pdfApplication.print();
       return { success: true };
     } catch (error) {
       console.error("Error printing PDF:", error);
@@ -798,9 +798,9 @@ class PDFMessageHandler {
    * @param {Object|string|Array} dest - The destination
    * @returns {Promise<{success: boolean}>} Success status
    */
-  async _navigateTo(dest) {
+  async #navigateTo(dest) {
     try {
-      await this.pdfApplication.pdfLinkService.goToDestination(dest);
+      await this.#pdfApplication.pdfLinkService.goToDestination(dest);
       return { success: true };
     } catch (error) {
       console.error("Error navigating to destination:", error);

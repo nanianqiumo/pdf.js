@@ -65,6 +65,52 @@ class PDFJSInterface extends EventEmitter {
   }
 
   /**
+   * @type {HTMLIFrameElement} PDF.js iframe元素
+   */
+  #iframe = null;
+
+  /**
+   * @type {Function} 准备就绪的回调函数
+   */
+  #onReadyCallback = null;
+
+  /**
+   * @type {boolean} PDF.js查看器是否已准备就绪
+   */
+  #isReady = false;
+
+  /**
+   * @type {Promise|null} 表示准备就绪的Promise
+   */
+  #readyPromise = null;
+
+  /**
+   * @type {Map<string, {
+   *   resolve: Function,
+   *   reject: Function,
+   *   timeoutId: number
+   * }>} 存储待处理的请求
+   */
+  #pendingRequests = new Map();
+
+  /**
+   * @type {Function} 绑定后的消息处理函数引用
+   * @private
+   */
+  #boundMessageHandler = null;
+
+  /**
+   * @type {Function} 绑定后的iframe加载事件处理函数引用
+   * @private
+   */
+  #boundIframeLoadHandler = null;
+
+  /**
+   * @type {number|null} 重新连接尝试的定时器ID
+   */
+  #reconnectTimerId = null;
+
+  /**
    * 构造函数
    * @param {HTMLIFrameElement|string} iframe - PDF.js iframe元素或其ID
    * @private - 应该使用静态的getInstance方法获取实例，而不是直接实例化
@@ -72,102 +118,36 @@ class PDFJSInterface extends EventEmitter {
   constructor(iframe) {
     super();
 
-    /**
-     * @type {HTMLIFrameElement} PDF.js iframe元素
-     */
-    this.iframe = null;
-
-    /**
-     * @type {Function} 准备就绪的回调函数
-     */
-    this.onReadyCallback = null;
-
-    /**
-     * @type {boolean} PDF.js查看器是否已准备就绪
-     */
-    this.isReady = false;
-
-    /**
-     * @type {Promise|null} 表示准备就绪的Promise
-     */
-    this.readyPromise = null;
-
-    /**
-     * @type {Map<string, {
-     *   resolve: Function,
-     *   reject: Function,
-     *   timeoutId: number
-     * }>} 存储待处理的请求
-     */
-    this.pendingRequests = new Map();
-
-    /**
-     * @type {Function} 绑定后的消息处理函数引用
-     * @private
-     */
-    this.boundMessageHandler = null;
-
-    /**
-     * @type {Function} 绑定后的iframe加载事件处理函数引用
-     * @private
-     */
-    this.boundIframeLoadHandler = null;
-
-    /**
-     * @type {number|null} 重新连接尝试的定时器ID
-     */
-    this.reconnectTimerId = null;
-
-    /**
-     * @type {number} 重连尝试次数
-     */
-    this.reconnectAttempts = 0;
-
-    /**
-     * @type {number} 最大重连尝试次数
-     */
-    this.maxReconnectAttempts = 3;
-
-    /**
-     * @type {number} 重连延迟时间(ms)
-     */
-    this.reconnectDelay = 2000;
-
-    /**
-     * @type {boolean} 是否正在进行重连尝试
-     */
-    this.isReconnecting = false;
-
     if (typeof iframe === "string") {
-      this.iframe = document.getElementById(iframe);
-      if (!this.iframe) {
+      this.#iframe = document.getElementById(iframe);
+      if (!this.#iframe) {
         throw new Error(`找不到ID为 ${iframe} 的iframe元素`);
       }
     } else if (iframe instanceof HTMLIFrameElement) {
-      this.iframe = iframe;
+      this.#iframe = iframe;
     } else {
       throw new Error("需要提供有效的iframe元素或其ID");
     }
 
     // 保存绑定后的函数引用，以便之后可以移除
-    this.boundMessageHandler = this._handleMessage.bind(this);
+    this.#boundMessageHandler = this.#handleMessage.bind(this);
 
     // 设置消息监听器
-    window.addEventListener("message", this.boundMessageHandler);
+    window.addEventListener("message", this.#boundMessageHandler);
 
     // 创建并保存iframe加载事件处理函数
-    this.boundIframeLoadHandler = () => {
+    this.#boundIframeLoadHandler = () => {
       console.log("PDFJSInterface: iframe加载完成, 重置ready状态");
       // 每当iframe重新加载，我们都应该重置ready状态并清除任何进行中的readyPromise
-      this.isReady = false;
-      this.readyPromise = null;
-      this.reconnectAttempts = 0; // 重置重连尝试计数
+      this.#isReady = false;
+      this.#readyPromise = null;
+      this.#reconnectAttempts = 0; // 重置重连尝试计数
       // 页面刷新时不需要立即尝试重连，等待正常的消息通信建立
       // 只在超时或请求失败时才触发重连
     };
 
     // 监听iframe的load事件，用于在iframe重新加载时重置状态
-    this.iframe.addEventListener("load", this.boundIframeLoadHandler);
+    this.#iframe.addEventListener("load", this.#boundIframeLoadHandler);
   }
 
   /**
@@ -177,32 +157,32 @@ class PDFJSInterface extends EventEmitter {
    */
   ready(timeout = 30000) {
     // 增加默认超时时间为30秒
-    if (this.isReady) {
+    if (this.#isReady) {
       return Promise.resolve();
     }
 
     // 如果已经有一个等待中的Promise，直接返回它
-    if (this.readyPromise) {
-      return this.readyPromise;
+    if (this.#readyPromise) {
+      return this.#readyPromise;
     }
 
     console.log(`PDFJSInterface: 等待查看器准备就绪，超时时间: ${timeout}ms`);
 
     // 创建新的Promise并存储它
-    this.readyPromise = new Promise((resolve, reject) => {
-      this.onReadyCallback = resolve;
+    this.#readyPromise = new Promise((resolve, reject) => {
+      this.#onReadyCallback = resolve;
 
       // 设置超时
       const timeoutId = setTimeout(() => {
-        if (!this.isReady) {
+        if (!this.#isReady) {
           console.error(`PDFJSInterface: 查看器准备就绪超时(${timeout}ms)`);
-          this.onReadyCallback = null;
-          this.readyPromise = null;
+          this.#onReadyCallback = null;
+          this.#readyPromise = null;
 
           // 只有在iframe已经完全加载后才尝试重连
-          if (this.iframe && this.iframe.contentWindow) {
+          if (this.#iframe && this.#iframe.contentWindow) {
             console.warn("PDFJSInterface: 查看器准备就绪超时，尝试重新连接...");
-            this._attemptReconnect();
+            this.#attemptReconnect();
           }
 
           reject(new Error("等待PDF.js查看器准备就绪超时"));
@@ -212,34 +192,54 @@ class PDFJSInterface extends EventEmitter {
       // 一次性处理程序
       const handler = () => {
         clearTimeout(timeoutId);
-        this.isReady = true;
+        this.#isReady = true;
         console.log("PDFJSInterface: 查看器已经准备就绪");
         this.off(MessageType.PDFJS_INTERFACE_READY, handler); // 移除监听器
         resolve();
-        this.onReadyCallback = null;
-        this.readyPromise = null;
+        this.#onReadyCallback = null;
+        this.#readyPromise = null;
       };
 
       // 如果监听器已经接收到ready事件，立即解析
       this.on(MessageType.PDFJS_INTERFACE_READY, handler);
 
       // 如果已经准备就绪，立即触发处理程序
-      if (this.isReady) {
+      if (this.#isReady) {
         handler();
       }
     });
 
-    return this.readyPromise;
+    return this.#readyPromise;
   }
+
+  /**
+   * @type {number} 重连尝试次数
+   */
+  #reconnectAttempts = 0;
+
+  /**
+   * @type {number} 最大重连尝试次数
+   */
+  #maxReconnectAttempts = 3;
+
+  /**
+   * @type {number} 重连延迟时间(ms)
+   */
+  #reconnectDelay = 2000;
+
+  /**
+   * @type {boolean} 是否正在进行重连尝试
+   */
+  #isReconnecting = false;
 
   /**
    * 处理来自PDF.js查看器的消息
    * @param {MessageEvent} event - 消息事件
    * @private
    */
-  _handleMessage(event) {
+  #handleMessage(event) {
     // 确保消息来自我们的iframe
-    if (event.source !== this.iframe.contentWindow) {
+    if (event.source !== this.#iframe.contentWindow) {
       return;
     }
 
@@ -249,14 +249,14 @@ class PDFJSInterface extends EventEmitter {
     console.log("PDFJSInterface 收到消息:", type, data);
 
     // 收到消息表示连接正常，重置重连计数
-    this.reconnectAttempts = 0;
-    this.isReconnecting = false;
+    this.#reconnectAttempts = 0;
+    this.#isReconnecting = false;
 
     // 处理响应
-    if (requestId && this.pendingRequests.has(requestId)) {
-      const request = this.pendingRequests.get(requestId);
+    if (requestId && this.#pendingRequests.has(requestId)) {
+      const request = this.#pendingRequests.get(requestId);
       clearTimeout(request.timeoutId);
-      this.pendingRequests.delete(requestId);
+      this.#pendingRequests.delete(requestId);
 
       if (type.endsWith(".error")) {
         request.reject(new Error(data?.message || "未知错误"));
@@ -274,9 +274,9 @@ class PDFJSInterface extends EventEmitter {
     // 特殊处理ready事件
     if (type === MessageType.PDFJS_INTERFACE_READY) {
       // 检查是否之前已设置为ready，避免重复触发
-      if (!this.isReady) {
-        this.isReady = true;
-        console.log("PDFJSInterface: 收到ready事件，设置isReady=true");
+      if (!this.#isReady) {
+        this.#isReady = true;
+        console.log("PDFJSInterface: 收到ready事件，设置#isReady=true");
         // 触发事件，确保只触发一次
         this._triggerEvent(MessageType.PDFJS_INTERFACE_READY, {});
       } else {
@@ -290,49 +290,49 @@ class PDFJSInterface extends EventEmitter {
    * 仅在确实需要重连时调用此方法（如请求超时或手动触发重连）
    * @private
    */
-  _attemptReconnect() {
+  #attemptReconnect() {
     // 如果已经在重连或达到最大尝试次数，则返回
     if (
-      this.isReconnecting ||
-      this.reconnectAttempts >= this.maxReconnectAttempts
+      this.#isReconnecting ||
+      this.#reconnectAttempts >= this.#maxReconnectAttempts
     ) {
       return;
     }
 
     // 如果iframe还没有加载完成，不要尝试重连
-    if (!this.iframe || !this.iframe.contentWindow) {
+    if (!this.#iframe || !this.#iframe.contentWindow) {
       console.log("PDFJSInterface: iframe尚未准备好，跳过重连");
       return;
     }
 
-    this.isReconnecting = true;
-    this.reconnectAttempts++;
+    this.#isReconnecting = true;
+    this.#reconnectAttempts++;
 
     console.log(
-      `PDFJSInterface: 尝试重新连接 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`
+      `PDFJSInterface: 尝试重新连接 (${this.#reconnectAttempts}/${this.#maxReconnectAttempts})...`
     );
 
     // 发送ping以检查查看器是否响应
     this.ping()
       .then(() => {
         console.log("PDFJSInterface: 重新连接成功");
-        this.isReconnecting = false;
+        this.#isReconnecting = false;
 
         // 触发重连成功事件
         this._triggerEvent("reconnect_success", {
-          attempts: this.reconnectAttempts,
+          attempts: this.#reconnectAttempts,
         });
 
         // 如果查看器已准备就绪，触发ready事件
-        if (!this.isReady) {
-          this._sendMessage(MessageType.CHECK_READY)
+        if (!this.#isReady) {
+          this.#sendMessage(MessageType.CHECK_READY)
             .then(isReady => {
               if (isReady) {
-                this.isReady = true;
+                this.#isReady = true;
                 this._triggerEvent(MessageType.PDFJS_INTERFACE_READY, {});
-                if (this.onReadyCallback) {
-                  this.onReadyCallback();
-                  this.onReadyCallback = null;
+                if (this.#onReadyCallback) {
+                  this.#onReadyCallback();
+                  this.#onReadyCallback = null;
                 }
               }
             })
@@ -343,24 +343,24 @@ class PDFJSInterface extends EventEmitter {
       })
       .catch(error => {
         console.error("PDFJSInterface: 重新连接失败", error);
-        this.isReconnecting = false;
+        this.#isReconnecting = false;
 
         // 如果未达到最大尝试次数，延迟后再次尝试
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        if (this.#reconnectAttempts < this.#maxReconnectAttempts) {
           // 先清除可能存在的旧定时器
-          if (this.reconnectTimerId !== null) {
-            clearTimeout(this.reconnectTimerId);
+          if (this.#reconnectTimerId !== null) {
+            clearTimeout(this.#reconnectTimerId);
           }
           // 保存新定时器ID
-          this.reconnectTimerId = setTimeout(() => {
-            this.reconnectTimerId = null;
-            this._attemptReconnect();
-          }, this.reconnectDelay);
+          this.#reconnectTimerId = setTimeout(() => {
+            this.#reconnectTimerId = null;
+            this.#attemptReconnect();
+          }, this.#reconnectDelay);
         } else {
           console.error("PDFJSInterface: 已达到最大重连尝试次数，放弃重连");
           this._triggerEvent("reconnect_attempts_exhausted", {
-            attempts: this.reconnectAttempts,
-            maxAttempts: this.maxReconnectAttempts,
+            attempts: this.#reconnectAttempts,
+            maxAttempts: this.#maxReconnectAttempts,
           });
         }
       });
@@ -375,7 +375,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<any>} - 响应数据
    * @private
    */
-  async _sendMessage(type, data = null, timeout = 5000, ensureReady = true) {
+  async #sendMessage(type, data = null, timeout = 5000, ensureReady = true) {
     // 对于特殊消息类型（如ping和check_ready），不需要确保就绪
     if (
       ensureReady &&
@@ -383,12 +383,12 @@ class PDFJSInterface extends EventEmitter {
       type !== MessageType.CHECK_READY
     ) {
       // 如果已经就绪，直接继续
-      if (!this.isReady) {
+      if (!this.#isReady) {
         try {
           await this.ready();
         } catch (error) {
           // 如果ready失败但iframe存在，仍然尝试发送消息
-          if (!this.iframe || !this.iframe.contentWindow) {
+          if (!this.#iframe || !this.#iframe.contentWindow) {
             throw error;
           }
           console.warn(`PDFJSInterface: ready失败但仍继续发送消息[${type}]`);
@@ -397,7 +397,7 @@ class PDFJSInterface extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
-      if (!this.iframe.contentWindow) {
+      if (!this.#iframe.contentWindow) {
         reject(new Error("iframe尚未初始化"));
         return;
       }
@@ -406,8 +406,8 @@ class PDFJSInterface extends EventEmitter {
 
       // 设置超时
       const timeoutId = setTimeout(() => {
-        if (this.pendingRequests.has(requestId)) {
-          this.pendingRequests.delete(requestId);
+        if (this.#pendingRequests.has(requestId)) {
+          this.#pendingRequests.delete(requestId);
           const timeoutError = new Error(`请求超时: ${type}`);
           reject(timeoutError);
 
@@ -417,20 +417,20 @@ class PDFJSInterface extends EventEmitter {
           if (
             type !== MessageType.PING &&
             type !== MessageType.CHECK_READY &&
-            !this.isReconnecting &&
-            this.reconnectAttempts < this.maxReconnectAttempts
+            !this.#isReconnecting &&
+            this.#reconnectAttempts < this.#maxReconnectAttempts
           ) {
             console.warn(`PDFJSInterface: 请求[${type}]超时，尝试重新连接...`);
-            this._attemptReconnect();
+            this.#attemptReconnect();
           }
         }
       }, timeout);
 
       // 存储待处理的请求
-      this.pendingRequests.set(requestId, { resolve, reject, timeoutId });
+      this.#pendingRequests.set(requestId, { resolve, reject, timeoutId });
 
       // 发送消息
-      this.iframe.contentWindow.postMessage(
+      this.#iframe.contentWindow.postMessage(
         { type, data, requestId },
         "*" // 考虑安全性，可以设置为具体的PDF.js查看器URL
       );
@@ -442,7 +442,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Array>} - 高亮数组
    */
   async getHighlights() {
-    return this._sendMessage(MessageType.GET_HIGHLIGHTS);
+    return this.#sendMessage(MessageType.GET_HIGHLIGHTS);
   }
 
   /**
@@ -450,7 +450,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async clearHighlights() {
-    return this._sendMessage(MessageType.CLEAR_HIGHLIGHTS);
+    return this.#sendMessage(MessageType.CLEAR_HIGHLIGHTS);
   }
 
   /**
@@ -459,7 +459,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async clearHighlight(id) {
-    return this._sendMessage(MessageType.CLEAR_HIGHLIGHT, { id });
+    return this.#sendMessage(MessageType.CLEAR_HIGHLIGHT, { id });
   }
 
   /**
@@ -467,7 +467,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Array<{page: number, text: string}>>} - 页面文本数组
    */
   async getAllText() {
-    return this._sendMessage(MessageType.GET_TEXT);
+    return this.#sendMessage(MessageType.GET_TEXT);
   }
 
   /**
@@ -476,7 +476,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<{page: number, text: string}>} - 页面文本
    */
   async getPageText(page) {
-    return this._sendMessage(MessageType.GET_PAGE_TEXT, { page });
+    return this.#sendMessage(MessageType.GET_PAGE_TEXT, { page });
   }
 
   /**
@@ -484,7 +484,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<number>} - 当前页码（从1开始）
    */
   async getCurrentPage() {
-    return this._sendMessage(MessageType.GET_CURRENT_PAGE);
+    return this.#sendMessage(MessageType.GET_CURRENT_PAGE);
   }
 
   /**
@@ -492,7 +492,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<number>} - 总页数
    */
   async getPageCount() {
-    return this._sendMessage(MessageType.GET_PAGE_COUNT);
+    return this.#sendMessage(MessageType.GET_PAGE_COUNT);
   }
 
   /**
@@ -501,7 +501,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async goToPage(pageNumber) {
-    return this._sendMessage(MessageType.GO_TO_PAGE, { pageNumber });
+    return this.#sendMessage(MessageType.GO_TO_PAGE, { pageNumber });
   }
 
   /**
@@ -512,7 +512,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async setTextHighlight(text, options = {}) {
-    return this._sendMessage(MessageType.SET_TEXT_HIGHLIGHT, { text, options });
+    return this.#sendMessage(MessageType.SET_TEXT_HIGHLIGHT, { text, options });
   }
 
   /**
@@ -520,7 +520,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async clearTextHighlight() {
-    return this._sendMessage(MessageType.CLEAR_TEXT_HIGHLIGHT);
+    return this.#sendMessage(MessageType.CLEAR_TEXT_HIGHLIGHT);
   }
 
   /**
@@ -533,7 +533,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<{found: boolean, page?: number}>} - 查找结果
    */
   async findText(text, options = {}) {
-    return this._sendMessage(MessageType.FIND_TEXT, { text, options });
+    return this.#sendMessage(MessageType.FIND_TEXT, { text, options });
   }
 
   /**
@@ -541,7 +541,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 文档信息
    */
   async getDocumentInfo() {
-    return this._sendMessage(MessageType.GET_DOCUMENT_INFO);
+    return this.#sendMessage(MessageType.GET_DOCUMENT_INFO);
   }
 
   /**
@@ -549,7 +549,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Array>} - 大纲数组
    */
   async getDocumentOutline() {
-    return this._sendMessage(MessageType.GET_DOCUMENT_OUTLINE);
+    return this.#sendMessage(MessageType.GET_DOCUMENT_OUTLINE);
   }
 
   /**
@@ -558,7 +558,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Array>} - 注释数组
    */
   async getAnnotations(pageNumber) {
-    return this._sendMessage(MessageType.GET_ANNOTATIONS, { pageNumber });
+    return this.#sendMessage(MessageType.GET_ANNOTATIONS, { pageNumber });
   }
 
   /**
@@ -567,7 +567,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async addAnnotation(annotation) {
-    return this._sendMessage(MessageType.ADD_ANNOTATION, { annotation });
+    return this.#sendMessage(MessageType.ADD_ANNOTATION, { annotation });
   }
 
   /**
@@ -576,7 +576,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async updateAnnotation(annotation) {
-    return this._sendMessage(MessageType.UPDATE_ANNOTATION, { annotation });
+    return this.#sendMessage(MessageType.UPDATE_ANNOTATION, { annotation });
   }
 
   /**
@@ -585,7 +585,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async deleteAnnotation(annotationId) {
-    return this._sendMessage(MessageType.DELETE_ANNOTATION, { annotationId });
+    return this.#sendMessage(MessageType.DELETE_ANNOTATION, { annotationId });
   }
 
   /**
@@ -595,7 +595,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async setZoom(scale) {
-    return this._sendMessage(MessageType.SET_ZOOM, { scale });
+    return this.#sendMessage(MessageType.SET_ZOOM, { scale });
   }
 
   /**
@@ -604,7 +604,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async rotatePages(rotation) {
-    return this._sendMessage(MessageType.ROTATE_PAGES, { rotation });
+    return this.#sendMessage(MessageType.ROTATE_PAGES, { rotation });
   }
 
   /**
@@ -612,7 +612,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async downloadPdf() {
-    return this._sendMessage(MessageType.DOWNLOAD_PDF);
+    return this.#sendMessage(MessageType.DOWNLOAD_PDF);
   }
 
   /**
@@ -620,7 +620,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async printPdf() {
-    return this._sendMessage(MessageType.PRINT_PDF);
+    return this.#sendMessage(MessageType.PRINT_PDF);
   }
 
   /**
@@ -628,7 +628,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async ping() {
-    return this._sendMessage(MessageType.PING, null, 5000, false);
+    return this.#sendMessage(MessageType.PING, null, 5000, false);
   }
 
   /**
@@ -637,7 +637,7 @@ class PDFJSInterface extends EventEmitter {
    * @returns {Promise<Object>} - 操作结果
    */
   async navigateTo(dest) {
-    return this._sendMessage(MessageType.NAVIGATE_TO, { dest });
+    return this.#sendMessage(MessageType.NAVIGATE_TO, { dest });
   }
 
   /**
@@ -647,19 +647,19 @@ class PDFJSInterface extends EventEmitter {
    */
   async reconnect() {
     // 如果已经准备就绪，不需要重连
-    if (this.isReady) {
+    if (this.#isReady) {
       console.log("PDFJSInterface: 接口已就绪，无需重连");
       return true;
     }
 
     // 如果正在重连，直接返回
-    if (this.isReconnecting) {
+    if (this.#isReconnecting) {
       console.log("PDFJSInterface: 正在重连中，请等待");
       return false;
     }
 
     // 如果iframe未加载，无法重连
-    if (!this.iframe || !this.iframe.contentWindow) {
+    if (!this.#iframe || !this.#iframe.contentWindow) {
       console.error("PDFJSInterface: iframe尚未加载完成，无法重连");
       return false;
     }
@@ -667,11 +667,11 @@ class PDFJSInterface extends EventEmitter {
     console.log("PDFJSInterface: 手动触发重新连接...");
 
     // 重置重连计数和状态，以便重新开始重连过程
-    this.reconnectAttempts = 0;
-    this.isReconnecting = false;
+    this.#reconnectAttempts = 0;
+    this.#isReconnecting = false;
 
     // 触发重连
-    this._attemptReconnect();
+    this.#attemptReconnect();
 
     // 返回一个Promise，等待第一次重连尝试结果
     return new Promise(resolve => {
@@ -696,7 +696,7 @@ class PDFJSInterface extends EventEmitter {
       setTimeout(() => {
         this.off(MessageType.PDFJS_INTERFACE_READY, successHandler);
         this.off("reconnect_attempts_exhausted", failureHandler);
-        resolve(this.isReady); // 如果已就绪则返回true，否则false
+        resolve(this.#isReady); // 如果已就绪则返回true，否则false
       }, 10000); // 10秒超时
     });
   }
@@ -722,16 +722,16 @@ class PDFJSInterface extends EventEmitter {
    */
   destroy(removeFromSingleton = true) {
     // 移除全局消息事件监听器
-    if (this.boundMessageHandler) {
-      window.removeEventListener("message", this.boundMessageHandler);
-      this.boundMessageHandler = null;
+    if (this.#boundMessageHandler) {
+      window.removeEventListener("message", this.#boundMessageHandler);
+      this.#boundMessageHandler = null;
     }
 
     // 移除iframe load事件监听器
-    if (this.iframe && this.boundIframeLoadHandler) {
+    if (this.#iframe && this.#boundIframeLoadHandler) {
       try {
-        this.iframe.removeEventListener("load", this.boundIframeLoadHandler);
-        this.boundIframeLoadHandler = null;
+        this.#iframe.removeEventListener("load", this.#boundIframeLoadHandler);
+        this.#boundIframeLoadHandler = null;
       } catch (e) {
         // 忽略可能的错误，如iframe已被移除
         console.warn("PDFJSInterface: 移除iframe load事件监听器时发生错误", e);
@@ -739,9 +739,9 @@ class PDFJSInterface extends EventEmitter {
     }
 
     // 清理所有待处理的请求
-    if (this.pendingRequests.size > 0) {
+    if (this.#pendingRequests.size > 0) {
       // 遍历并清理所有待处理请求
-      for (const request of this.pendingRequests.values()) {
+      for (const request of this.#pendingRequests.values()) {
         // 清除超时计时器
         if (request.timeoutId) {
           clearTimeout(request.timeoutId);
@@ -753,29 +753,29 @@ class PDFJSInterface extends EventEmitter {
         }
       }
       // 清空请求映射
-      this.pendingRequests.clear();
+      this.#pendingRequests.clear();
     }
 
     // 清除事件监听器
     this._clearAllEventListeners();
 
     // 如果需要，从单例管理器中移除此实例
-    if (removeFromSingleton && this.iframe) {
-      PDFJSInterface.instances.delete(this.iframe);
+    if (removeFromSingleton && this.#iframe) {
+      PDFJSInterface.instances.delete(this.#iframe);
     }
 
     // 清除重连定时器（如果有的话）
-    if (this.reconnectTimerId !== null) {
-      clearTimeout(this.reconnectTimerId);
-      this.reconnectTimerId = null;
+    if (this.#reconnectTimerId !== null) {
+      clearTimeout(this.#reconnectTimerId);
+      this.#reconnectTimerId = null;
     }
 
     // 清除其他引用
-    this.iframe = null;
-    this.onReadyCallback = null;
-    this.isReady = false;
-    this.reconnectAttempts = 0;
-    this.isReconnecting = false;
+    this.#iframe = null;
+    this.#onReadyCallback = null;
+    this.#isReady = false;
+    this.#reconnectAttempts = 0;
+    this.#isReconnecting = false;
 
     console.log("PDFJSInterface: 实例已销毁");
   }
@@ -788,8 +788,8 @@ class PDFJSInterface extends EventEmitter {
     console.log("PDFJSInterface: 重置接口状态");
 
     // 清理所有待处理的请求
-    if (this.pendingRequests.size > 0) {
-      for (const request of this.pendingRequests.values()) {
+    if (this.#pendingRequests.size > 0) {
+      for (const request of this.#pendingRequests.values()) {
         if (request.timeoutId) {
           clearTimeout(request.timeoutId);
         }
@@ -797,23 +797,23 @@ class PDFJSInterface extends EventEmitter {
           request.reject(new Error("Interface被重置，请求被取消"));
         }
       }
-      this.pendingRequests.clear();
+      this.#pendingRequests.clear();
     }
 
     // 清除事件监听器但保留消息处理
     this._clearAllEventListeners();
 
     // 清除重连定时器（如果有的话）
-    if (this.reconnectTimerId !== null) {
-      clearTimeout(this.reconnectTimerId);
-      this.reconnectTimerId = null;
+    if (this.#reconnectTimerId !== null) {
+      clearTimeout(this.#reconnectTimerId);
+      this.#reconnectTimerId = null;
     }
 
     // 重置状态
-    this.isReady = false;
-    this.onReadyCallback = null;
-    this.reconnectAttempts = 0;
-    this.isReconnecting = false;
+    this.#isReady = false;
+    this.#onReadyCallback = null;
+    this.#reconnectAttempts = 0;
+    this.#isReconnecting = false;
 
     // 注意：不需要重置boundIframeLoadHandler，因为iframe仍然需要继续监听加载事件
 

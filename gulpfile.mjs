@@ -651,43 +651,43 @@ function createImageDecodersBundle(defines) {
     .pipe(webpack2Stream(componentsFileConfig));
 }
 
-// // 创建接口捆绑包
-// function createInterfaceBundle(defines) {
-//   // 获取基本配置
-//   const interfaceConfig = createWebpackConfig(defines, {
-//     filename: "interface.mjs",
-//     library: { type: "module" },
-//   });
+// 创建接口捆绑包
+function createInterfaceBundle(defines) {
+  // 获取基本配置
+  const interfaceConfig = createWebpackConfig(defines, {
+    filename: "interface.mjs",
+    library: { type: "module" },
+  });
 
-//   // 确保有正确的babel插件来处理私有字段
-//   if (
-//     interfaceConfig.module &&
-//     interfaceConfig.module.rules &&
-//     interfaceConfig.module.rules.length > 0
-//   ) {
-//     const babelRule = interfaceConfig.module.rules.find(
-//       rule => rule.loader === "babel-loader"
-//     );
+  // 确保有正确的babel插件来处理私有字段
+  if (
+    interfaceConfig.module &&
+    interfaceConfig.module.rules &&
+    interfaceConfig.module.rules.length > 0
+  ) {
+    const babelRule = interfaceConfig.module.rules.find(
+      rule => rule.loader === "babel-loader"
+    );
 
-//     if (babelRule && babelRule.options) {
-//       // 如果没有plugins数组，创建一个
-//       if (!babelRule.options.plugins) {
-//         babelRule.options.plugins = [];
-//       }
+    if (babelRule && babelRule.options) {
+      // 如果没有plugins数组，创建一个
+      if (!babelRule.options.plugins) {
+        babelRule.options.plugins = [];
+      }
 
-//       // 添加处理私有字段所需的插件
-//       babelRule.options.plugins.push(
-//         "@babel/plugin-transform-class-properties",
-//         "@babel/plugin-transform-private-methods",
-//         "@babel/plugin-transform-private-property-in-object"
-//       );
-//     }
-//   }
+      // 添加处理私有字段所需的插件
+      babelRule.options.plugins.push(
+        "@babel/plugin-transform-class-properties",
+        "@babel/plugin-transform-private-methods",
+        "@babel/plugin-transform-private-property-in-object"
+      );
+    }
+  }
 
-//   return gulp
-//     .src("./web/interface/index.js", { encoding: false })
-//     .pipe(webpack2Stream(interfaceConfig));
-// }
+  return gulp
+    .src("./web/interface/index.js", { encoding: false })
+    .pipe(webpack2Stream(interfaceConfig));
+}
 
 function createCMapBundle() {
   return gulp.src(["external/bcmaps/*.bcmap", "external/bcmaps/LICENSE"], {
@@ -1661,35 +1661,35 @@ gulp.task("types", function (done) {
   );
 });
 
-// gulp.task("interface", function () {
-//   console.log();
-//   console.log("### Building PDFJSInterface module");
+gulp.task("interface", function () {
+  console.log();
+  console.log("### Building PDFJSInterface module");
 
-//   const INTERFACE_DIR = BUILD_DIR + "interface/";
+  const INTERFACE_DIR = BUILD_DIR + "interface/";
 
-//   // Clear the interface directory
-//   fs.rmSync(INTERFACE_DIR, { recursive: true, force: true });
-//   fs.mkdirSync(INTERFACE_DIR, { recursive: true });
+  // Clear the interface directory
+  fs.rmSync(INTERFACE_DIR, { recursive: true, force: true });
+  fs.mkdirSync(INTERFACE_DIR, { recursive: true });
 
-//   // 使用与components任务相同的编译方式处理interface文件
-//   const defines = { ...DEFINES, GENERIC: true };
-//   return ordered([
-//     // 使用webpack编译JS文件
-//     createInterfaceBundle(defines).pipe(gulp.dest(INTERFACE_DIR)),
+  // 使用与components任务相同的编译方式处理interface文件
+  const defines = { ...DEFINES, GENERIC: true };
+  return ordered([
+    // 使用webpack编译JS文件
+    createInterfaceBundle(defines).pipe(gulp.dest(INTERFACE_DIR)),
 
-//     // 复制其他非JS文件
-//     gulp
-//       .src(["web/interface/**/*", "!web/interface/**/*.js"], {
-//         encoding: false,
-//       })
-//       .pipe(gulp.dest(INTERFACE_DIR)),
+    // 复制其他非JS文件
+    gulp
+      .src(["web/interface/**/*", "!web/interface/**/*.js"], {
+        encoding: false,
+      })
+      .pipe(gulp.dest(INTERFACE_DIR)),
 
-//     // 创建索引文件
-//     createStringSource("index.js", 'export * from "./interface.mjs";\n').pipe(
-//       gulp.dest(INTERFACE_DIR)
-//     ),
-//   ]);
-// });
+    // 创建索引文件
+    createStringSource("index.js", 'export * from "./interface.mjs";\n').pipe(
+      gulp.dest(INTERFACE_DIR)
+    ),
+  ]);
+});
 
 // interface-package任务已移除，因为接口已直接集成到主包中
 
@@ -1849,7 +1849,7 @@ gulp.task(
   gulp.series(
     "generic",
     "generic-legacy",
-    // "interface",
+    "interface",
     function createPublish(done) {
       const version = JSON.parse(
         fs.readFileSync(BUILD_DIR + "version.json").toString()
@@ -2478,7 +2478,7 @@ gulp.task(
     "minified",
     "minified-legacy",
     "types",
-    // "interface",
+    "interface",
     function createDist() {
       fs.rmSync(DIST_DIR, { recursive: true, force: true });
       fs.mkdirSync(DIST_DIR, { recursive: true });

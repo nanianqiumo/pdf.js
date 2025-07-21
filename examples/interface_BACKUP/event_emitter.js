@@ -18,13 +18,11 @@
  * 提供事件注册、移除和触发的基本功能
  */
 class EventEmitter {
-  constructor() {
-    /**
-     * @type {Object.<string, Function[]>} 存储事件监听器
-     * @private
-     */
-    this.eventListeners = {};
-  }
+  /**
+   * @type {Object.<string, Function[]>} 存储事件监听器
+   * @private
+   */
+  #eventListeners = {};
 
   /**
    * 添加事件监听器
@@ -37,11 +35,11 @@ class EventEmitter {
       throw new Error("监听器必须是一个函数");
     }
 
-    if (!this.eventListeners[eventType]) {
-      this.eventListeners[eventType] = [];
+    if (!this.#eventListeners[eventType]) {
+      this.#eventListeners[eventType] = [];
     }
 
-    this.eventListeners[eventType].push(callback);
+    this.#eventListeners[eventType].push(callback);
     return this;
   }
 
@@ -52,14 +50,14 @@ class EventEmitter {
    * @returns {EventEmitter} - 返回this用于链式调用
    */
   off(eventType, callback) {
-    if (!this.eventListeners[eventType]) {
+    if (!this.#eventListeners[eventType]) {
       return this;
     }
 
     if (!callback) {
-      this.eventListeners[eventType] = [];
+      this.#eventListeners[eventType] = [];
     } else {
-      this.eventListeners[eventType] = this.eventListeners[eventType].filter(
+      this.#eventListeners[eventType] = this.#eventListeners[eventType].filter(
         listener => listener !== callback
       );
     }
@@ -74,11 +72,11 @@ class EventEmitter {
    * @protected
    */
   _triggerEvent(eventType, data) {
-    if (!this.eventListeners[eventType]) {
+    if (!this.#eventListeners[eventType]) {
       return;
     }
 
-    this.eventListeners[eventType].forEach(callback => {
+    this.#eventListeners[eventType].forEach(callback => {
       try {
         callback(data);
       } catch (error) {
@@ -95,8 +93,8 @@ class EventEmitter {
    */
   _hasEventListeners(eventType) {
     return (
-      !!this.eventListeners[eventType] &&
-      this.eventListeners[eventType].length > 0
+      !!this.#eventListeners[eventType] &&
+      this.#eventListeners[eventType].length > 0
     );
   }
 
@@ -106,7 +104,7 @@ class EventEmitter {
    * @protected
    */
   _getEventTypes() {
-    return Object.keys(this.eventListeners);
+    return Object.keys(this.#eventListeners);
   }
 
   /**
@@ -114,7 +112,7 @@ class EventEmitter {
    * @protected
    */
   _clearAllEventListeners() {
-    this.eventListeners = {};
+    this.#eventListeners = {};
   }
 }
 

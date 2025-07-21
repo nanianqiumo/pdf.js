@@ -1,0 +1,99 @@
+/* 基础样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+}
+
+/* 自定义样式 */
+.viewer-container {
+  height: 70vh;
+  min-height: 500px;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  background-color: #f0f0f0;
+  position: relative;
+}
+
+.progress-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 100;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.log {
+  height: 150px;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 4px;
+  padding: 10px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+}
+
+.log-entry {
+  margin-bottom: 5px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+}
+
+.log-time {
+  color: #6c757d;
+  font-size: 0.85em;
+}
+
+.log-message {
+  margin-left: 5px;
+}
+
+.color-swatch {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.color-swatch.active {
+  border: 2px solid #0b5ed7;
+}
+
+.highlight-box {
+  border-left: 4px solid #ffff00;
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.highlight-text {
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.highlight-info {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-top: 5px;
+}
+
+.highlight-actions {
+  margin-top: 8px;
+}
