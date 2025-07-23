@@ -1,10 +1,10 @@
 import { createApp } from "vue";
-import Antd from "ant-design-vue";
-import "ant-design-vue/dist/reset.css";
+import ArcoVue from "@arco-design/web-vue";
+import "@arco-design/web-vue/dist/arco.css";
 import PdfViewerDemo from "./PdfViewerDemo.vue";
 
 const app = createApp(PdfViewerDemo);
 
-app.use(Antd);
+app.use(ArcoVue);
 
 app.mount("#app");

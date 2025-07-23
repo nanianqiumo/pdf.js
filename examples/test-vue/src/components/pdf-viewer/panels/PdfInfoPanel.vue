@@ -196,7 +196,7 @@
           <div v-for="(permission, key) in permissionList" :key="key">
             <a-space>
               <component 
-                :is="permission.allowed ? 'CheckCircleOutlined' : 'CloseCircleOutlined'"
+                :is="permission.allowed ? 'IconCheckCircle' : 'IconCloseCircle'"
                 :style="{ color: permission.allowed ? '#52c41a' : '#f5222d' }"
               />
               <span>{{ permission.label }}</span>
@@ -232,7 +232,7 @@
           <a-button 
             size="small"
             @click="copyDocumentInfo"
-            :icon="h(CopyOutlined)"
+            :icon="h(IconCopy)"
           >
             复制信息
           </a-button>
@@ -240,7 +240,7 @@
           <a-button 
             size="small"
             @click="exportDocumentInfo"
-            :icon="h(DownloadOutlined)"
+            :icon="h(IconDownload)"
           >
             导出信息
           </a-button>
@@ -249,7 +249,7 @@
             size="small"
             @click="refreshInfo"
             :loading="refreshing"
-            :icon="h(ReloadOutlined)"
+            :icon="h(IconRefresh)"
           >
             刷新信息
           </a-button>
@@ -267,7 +267,7 @@
 
     <!-- 详细信息模态框 -->
     <a-modal
-      v-model:open="detailModalVisible"
+      v-model:visible="detailModalVisible"
       title="详细文档信息"
       :width="800"
       :footer="null"
@@ -308,15 +308,14 @@
 
 <script setup>
 import { h, ref, computed, watch, onMounted, inject } from 'vue'
-import { message } from 'ant-design-vue'
+import { Message } from '@arco-design/web-vue'
 import {
-  CopyOutlined,
-  DownloadOutlined,
-  ReloadOutlined,
-  InfoCircleOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined
-} from '@ant-design/icons-vue'
+  IconCopy,
+  IconDownload,
+  IconRefresh,
+  IconCheckCircle,
+  IconCloseCircle
+} from '@arco-design/web-vue/es/icon'
 
 const props = defineProps({
   documentInfo: {
@@ -473,7 +472,7 @@ function getPageRatio(width, height) {
 
 async function refreshInfo() {
   if (!props.pdfViewer) {
-    message.warning('PDF查看器未准备就绪')
+    Message.warning('PDF查看器未准备就绪')
     return
   }
 
@@ -501,11 +500,11 @@ async function refreshInfo() {
       memoryUsage.value = perf.memoryUsage
     }
     
-    message.success('信息已刷新')
+    Message.success('信息已刷新')
     
   } catch (error) {
     console.error('刷新信息失败:', error)
-    message.error('刷新信息失败')
+    Message.error('刷新信息失败')
   } finally {
     refreshing.value = false
   }
@@ -532,8 +531,8 @@ function copyDocumentInfo() {
   
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text)
-      .then(() => message.success('文档信息已复制到剪贴板'))
-      .catch(() => message.error('复制失败'))
+      .then(() => Message.success('文档信息已复制到剪贴板'))
+      .catch(() => Message.error('复制失败'))
   } else {
     // 兼容性处理
     const textArea = document.createElement('textarea')
@@ -542,7 +541,7 @@ function copyDocumentInfo() {
     textArea.select()
     document.execCommand('copy')
     document.body.removeChild(textArea)
-    message.success('文档信息已复制到剪贴板')
+    Message.success('文档信息已复制到剪贴板')
   }
 }
 
@@ -582,11 +581,11 @@ function exportDocumentInfo() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
     
-    message.success('文档信息已导出')
+    Message.success('文档信息已导出')
     
   } catch (error) {
     console.error('导出失败:', error)
-    message.error('导出失败')
+    Message.error('导出失败')
   }
 }
 

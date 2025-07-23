@@ -145,11 +145,11 @@ function safeSpawnSync(command, parameters, options = {}) {
   if (result.status !== 0) {
     console.log(
       'Error: command "' +
-        command +
-        '" with parameters "' +
-        parameters +
-        '" exited with code ' +
-        result.status
+      command +
+      '" with parameters "' +
+      parameters +
+      '" exited with code ' +
+      result.status
     );
     process.exit(result.status);
   }
@@ -389,23 +389,23 @@ function createWebpackConfig(
       minimizer: !isMinified
         ? undefined
         : [
-            new TerserPlugin({
-              extractComments: false,
-              parallel: false,
-              terserOptions: {
-                compress: {
-                  // V8 chokes on very long sequences, work around that.
-                  sequences: false,
-                },
-                format: {
-                  comments: /@lic|webpackIgnore|@vite-ignore|pdfjsVersion/i,
-                },
-                keep_classnames: true,
-                keep_fnames: true,
-                module: isModule,
+          new TerserPlugin({
+            extractComments: false,
+            parallel: false,
+            terserOptions: {
+              compress: {
+                // V8 chokes on very long sequences, work around that.
+                sequences: false,
               },
-            }),
-          ],
+              format: {
+                comments: /@lic|webpackIgnore|@vite-ignore|pdfjsVersion/i,
+              },
+              keep_classnames: true,
+              keep_fnames: true,
+              module: isModule,
+            },
+          }),
+        ],
     },
     experiments,
     output,
@@ -477,7 +477,7 @@ function checkChromePreferencesFile(chromePrefsPath, webPrefs) {
       ret = false;
       console.log(
         `Warning: not the same values (for "${key}"): ` +
-          `${chromePrefs.properties[key].default} !== ${value}`
+        `${chromePrefs.properties[key].default} !== ${value}`
       );
     }
   }
@@ -489,8 +489,8 @@ function checkChromePreferencesFile(chromePrefsPath, webPrefs) {
       ret = false;
       console.log(
         `Warning: ${chromePrefsPath} contains an unrecognized pref: ${key}. ` +
-          `Remove it, or prepend "DEPRECATED. " and add migration logic to ` +
-          `extensions/chromium/options/migration.js and web/chromecom.js.`
+        `Remove it, or prepend "DEPRECATED. " and add migration logic to ` +
+        `extensions/chromium/options/migration.js and web/chromecom.js.`
       );
     }
   }
@@ -1150,9 +1150,10 @@ function buildGeneric(defines, dir) {
     gulp
       .src(COMMON_WEB_FILES, { base: "web/", encoding: false })
       .pipe(gulp.dest(dir + "web")),
-    gulp
-      .src("web/interface/*.js", { encoding: false })
-      .pipe(gulp.dest(dir + "web/interface")),
+    createInterfaceBundle(defines).pipe(gulp.dest(dir + "web/interface")),
+    createStringSource("index.js", 'export * from "./interface.mjs";\n').pipe(
+      gulp.dest(dir + "web/interface")
+    ),
     gulp.src("LICENSE", { encoding: false }).pipe(gulp.dest(dir)),
     gulp
       .src(["web/locale/*/viewer.ftl", "web/locale/locale.json"], {
@@ -1701,11 +1702,11 @@ function buildLibHelper(bundleDefines, inputStream, outputDir) {
       presets: skipBabel
         ? undefined
         : [
-            [
-              "@babel/preset-env",
-              { ...BABEL_PRESET_ENV_OPTS, loose: false, modules: false },
-            ],
+          [
+            "@babel/preset-env",
+            { ...BABEL_PRESET_ENV_OPTS, loose: false, modules: false },
           ],
+        ],
       plugins: [[babelPluginPDFJSPreprocessor, ctx]],
       targets: BABEL_TARGETS,
     }).code;
@@ -2729,8 +2730,8 @@ gulp.task(
             .on("end", function () {
               console.log(
                 "Result diff can be found at " +
-                  BUILD_DIR +
-                  MOZCENTRAL_DIFF_FILE
+                BUILD_DIR +
+                MOZCENTRAL_DIFF_FILE
               );
               done();
             });

@@ -8,34 +8,33 @@
           <a-row :gutter="[16, 16]" align="middle">
             <a-col :span="8">
               <a-button 
-                block
+                size="small"
                 :disabled="currentPage <= 1"
                 @click="goToPrevious"
-                :icon="h(LeftOutlined)"
               >
+                <icon-left />
                 上一页
               </a-button>
             </a-col>
             <a-col :span="8">
               <a-input-number
-                v-model:value="pageInput"
+                v-model:model-value="pageInput"
                 :min="1"
                 :max="totalPages"
-                @pressEnter="goToInputPage"
+                @press-enter="goToInputPage"
                 @change="goToInputPage"
                 size="small"
-                style="width: 100%"
                 :disabled="!pdfViewer"
               />
             </a-col>
             <a-col :span="8">
               <a-button 
-                block
+                size="small"
                 :disabled="currentPage >= totalPages"
                 @click="goToNext"
-                :icon="h(RightOutlined)"
               >
                 下一页
+                <icon-right />
               </a-button>
             </a-col>
           </a-row>
@@ -49,7 +48,7 @@
           <!-- 页面进度条 -->
           <a-progress 
             :percent="pageProgress" 
-            :showInfo="false"
+            :show-text="false"
             size="small"
           />
         </a-space>
@@ -126,7 +125,6 @@
         <!-- 无缩略图时的占位符 -->
         <a-empty 
           v-else
-          :image="h(FileTextOutlined)" 
           description="暂无页面预览"
           size="small"
         />
@@ -150,10 +148,9 @@
 <script setup>
 import { h, ref, computed, watch, onMounted, inject } from 'vue'
 import { 
-  LeftOutlined, 
-  RightOutlined, 
-  FileTextOutlined 
-} from '@ant-design/icons-vue'
+  IconLeft, 
+  IconRight, 
+} from '@arco-design/web-vue/es/icon'
 
 const props = defineProps({
   pdfViewer: Object,

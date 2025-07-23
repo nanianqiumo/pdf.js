@@ -3,11 +3,11 @@
     <div id="demo-app">
       <!-- 页面标题 -->
       <div class="header-section">
-        <a-typography-title :level="1">
+        <a-typography-title :heading="1">
           PDF.js Vue 组件库演示
         </a-typography-title>
         <a-typography-paragraph type="secondary">
-          基于 Ant Design Vue 的专业PDF查看器组件，支持插槽定制、响应式布局和丰富的交互功能。
+          基于 Arco Design Vue 的专业PDF查看器组件，支持插槽定制、响应式布局和丰富的交互功能。
         </a-typography-paragraph>
       </div>
 
@@ -15,44 +15,42 @@
     <a-row :gutter="[16, 16]" style="margin-bottom: 24px;">
       <a-col :span="24">
         <a-card title="功能演示">
-          <a-space wrap>
+          <a-space wrap align="start">
             <a-button 
               type="primary" 
               @click="showEmbeddedViewer"
-              :icon="h(FileTextOutlined)"
             >
+              <template #icon><icon-file-text /></template>
               内嵌PDF查看器
             </a-button>
             
             <a-button 
               @click="showModalViewer"
-              :icon="h(EyeOutlined)"
             >
+              <template #icon><icon-eye /></template>
               模态框查看器
             </a-button>
             
             <a-button 
               @click="showFullscreenViewer"
-              :icon="h(ExpandOutlined)"
             >
+              <template #icon><icon-expand /></template>
               全屏查看器
             </a-button>
             
             <a-button 
               @click="showCustomViewer"
-              :icon="h(SettingOutlined)"
             >
+              <template #icon><icon-settings /></template>
               自定义配置
             </a-button>
             
             <a-upload
-              :before-upload="handleFileUpload"
-              :show-upload-list="false"
+              @before-upload="handleFileUpload"
+              :show-file-list="true"
               accept=".pdf"
+              :limit="1"
             >
-              <a-button :icon="h(UploadOutlined)">
-                上传PDF文件
-              </a-button>
             </a-upload>
           </a-space>
         </a-card>
@@ -68,7 +66,7 @@
           </a-button>
         </template>
         
-        <div style="height: 600px;">
+        <div>
           <PdfViewer
             :url="currentPdfUrl"
             :options="embeddedOptions"
@@ -77,7 +75,6 @@
             @zoom-changed="onZoomChanged"
             @error="onError"
           >
-            <!-- 使用所有可用的插槽 -->
             <template #navigation>
               <PdfNavigationPanel />
             </template>
@@ -100,12 +97,12 @@
 
     <!-- 模态框PDF查看器 -->
     <a-modal
-      v-model:open="modalVisible"
+      v-model:visible="modalVisible"
       title="PDF文档查看"
       :width="1200"
       :footer="null"
-      :bodyStyle="{ height: '700px', padding: '0' }"
-      destroyOnClose
+      :body-style="{ height: '700px', padding: '0' }"
+      unmount-on-close
     >
       <PdfViewer
         v-if="modalVisible"
@@ -135,14 +132,14 @@
 
     <!-- 全屏PDF查看器 -->
     <a-modal
-      v-model:open="fullscreenVisible"
+      v-model:visible="fullscreenVisible"
       :width="'100vw'"
       :style="{ top: 0, paddingBottom: 0 }"
-      :bodyStyle="{ height: '100vh', padding: '0' }"
+      :body-style="{ height: '100vh', padding: '0' }"
       :footer="null"
       :closable="true"
-      wrapClassName="fullscreen-modal"
-      destroyOnClose
+      modal-class="fullscreen-modal"
+      unmount-on-close
     >
       <PdfViewer
         v-if="fullscreenVisible"
@@ -171,7 +168,7 @@
 
     <!-- 自定义配置模态框 -->
     <a-modal
-      v-model:open="customModalVisible"
+      v-model:visible="customModalVisible"
       title="自定义PDF查看器配置"
       :width="800"
       @ok="applyCustomConfig"
@@ -180,20 +177,20 @@
         <a-row :gutter="[16, 16]">
           <a-col :span="12">
             <a-form-item label="主题">
-              <a-select v-model:value="customConfig.theme">
-                <a-select-option value="light">浅色主题</a-select-option>
-                <a-select-option value="dark">深色主题</a-select-option>
+              <a-select v-model:model-value="customConfig.theme">
+                <a-option value="light">浅色主题</a-option>
+                <a-option value="dark">深色主题</a-option>
               </a-select>
             </a-form-item>
           </a-col>
           
           <a-col :span="12">
             <a-form-item label="默认面板">
-              <a-select v-model:value="customConfig.defaultPanel">
-                <a-select-option value="navigation">导航面板</a-select-option>
-                <a-select-option value="search">搜索面板</a-select-option>
-                <a-select-option value="highlights">高亮面板</a-select-option>
-                <a-select-option value="info">信息面板</a-select-option>
+              <a-select v-model:model-value="customConfig.defaultPanel">
+                <a-option value="navigation">导航面板</a-option>
+                <a-option value="search">搜索面板</a-option>
+                <a-option value="highlights">高亮面板</a-option>
+                <a-option value="info">信息面板</a-option>
               </a-select>
             </a-form-item>
           </a-col>
@@ -202,7 +199,7 @@
         <a-row :gutter="[16, 16]">
           <a-col :span="12">
             <a-form-item label="功能开关">
-              <a-checkbox-group v-model:value="customConfig.features">
+              <a-checkbox-group v-model:model-value="customConfig.features">
                 <a-space direction="vertical">
                   <a-checkbox value="toolbar">显示工具栏</a-checkbox>
                   <a-checkbox value="sidebar">显示侧边栏</a-checkbox>
@@ -217,16 +214,16 @@
           <a-col :span="12">
             <a-form-item label="PDF URL">
               <a-input 
-                v-model:value="customConfig.pdfUrl" 
+                v-model:model-value="customConfig.pdfUrl" 
                 placeholder="输入PDF文件URL"
               />
             </a-form-item>
             
             <a-form-item label="语言">
-              <a-select v-model:value="customConfig.locale">
-                <a-select-option value="zh-CN">中文(简体)</a-select-option>
-                <a-select-option value="zh-TW">中文(繁体)</a-select-option>
-                <a-select-option value="en-US">English</a-select-option>
+              <a-select v-model:model-value="customConfig.locale">
+                <a-option value="zh-CN">中文(简体)</a-option>
+                <a-option value="zh-TW">中文(繁体)</a-option>
+                <a-option value="en-US">English</a-option>
               </a-select>
             </a-form-item>
           </a-col>
@@ -280,7 +277,7 @@
       <a-col :span="24">
         <a-card title="使用说明">
           <a-collapse>
-            <a-collapse-panel key="basic" header="基本使用">
+            <a-collapse-item key="basic" header="基本使用">
               <pre><code>&lt;PdfViewer :url="pdfUrl" :options="options"&gt;
   &lt;template #navigation&gt;
     &lt;PdfNavigationPanel /&gt;
@@ -289,9 +286,9 @@
     &lt;PdfSearchPanel /&gt;
   &lt;/template&gt;
 &lt;/PdfViewer&gt;</code></pre>
-            </a-collapse-panel>
+            </a-collapse-item>
             
-            <a-collapse-panel key="config" header="配置选项">
+            <a-collapse-item key="config" header="配置选项">
               <a-typography-paragraph>
                 <strong>options 支持的配置项：</strong>
                 <ul>
@@ -306,9 +303,9 @@
                   <li><code>locale</code>: 语言设置</li>
                 </ul>
               </a-typography-paragraph>
-            </a-collapse-panel>
+            </a-collapse-item>
             
-            <a-collapse-panel key="events" header="事件说明">
+            <a-collapse-item key="events" header="事件说明">
               <a-typography-paragraph>
                 <strong>支持的事件：</strong>
                 <ul>
@@ -321,9 +318,9 @@
                   <li><code>@highlight-deleted</code>: 删除高亮</li>
                 </ul>
               </a-typography-paragraph>
-            </a-collapse-panel>
+            </a-collapse-item>
 
-            <a-collapse-panel key="slots" header="插槽说明">
+            <a-collapse-item key="slots" header="插槽说明">
               <a-typography-paragraph>
                 <strong>可用插槽：</strong>
                 <ul>
@@ -335,7 +332,7 @@
                   <li><code>#empty</code>: 空状态插槽</li>
                 </ul>
               </a-typography-paragraph>
-            </a-collapse-panel>
+            </a-collapse-item>
           </a-collapse>
         </a-card>
       </a-col>
@@ -351,14 +348,14 @@ export { h }
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
-import { message, notification } from 'ant-design-vue'
+import { Message, Notification } from '@arco-design/web-vue'
 import {
-  FileTextOutlined,
-  EyeOutlined,
-  ExpandOutlined,
-  SettingOutlined,
-  UploadOutlined
-} from '@ant-design/icons-vue'
+  IconFile,
+  IconEye,
+  IconExpand,
+  IconSettings,
+  IconUpload
+} from '@arco-design/web-vue/es/icon'
 
 // 导入组件
 import PdfViewer from './components/pdf-viewer/PdfViewer.vue'
@@ -374,8 +371,7 @@ const fullscreenVisible = ref(false)
 const customModalVisible = ref(false)
 
 // PDF URL管理
-const currentPdfUrl = ref('/build/generic/web/viewer.html?file=/build/dist/web/compressed.tracemonkey-pldi-09.pdf')
-
+const currentPdfUrl = ref('/public/test/pdfs/tracemonkey.pdf')
 // 各种查看器配置
 const embeddedOptions = reactive({
   theme: 'light',
@@ -386,7 +382,9 @@ const embeddedOptions = reactive({
   enableFullscreen: true,
   enableSearch: true,
   enableHighlight: true,
-  locale: 'zh-CN'
+  locale: 'zh-CN',
+
+  viewerPath: '/node_modules/pdfjs-editor/web/viewer.html' // 修改这里
 })
 
 const modalOptions = reactive({
@@ -438,17 +436,17 @@ const documentStatus = reactive({
 // 方法
 function showEmbeddedViewer() {
   showEmbedded.value = true
-  message.info('内嵌PDF查看器已打开')
+  Message.info('内嵌PDF查看器已打开')
 }
 
 function showModalViewer() {
   modalVisible.value = true
-  message.info('模态框PDF查看器已打开')
+  Message.info('模态框PDF查看器已打开')
 }
 
 function showFullscreenViewer() {
   fullscreenVisible.value = true
-  message.info('全屏PDF查看器已打开')
+  Message.info('全屏PDF查看器已打开')
 }
 
 function showCustomViewer() {
@@ -462,9 +460,9 @@ function handleFileUpload(file) {
     // 创建 blob URL
     const blob = new Blob([pdfData], { type: 'application/pdf' })
     const blobUrl = URL.createObjectURL(blob)
-    currentPdfUrl.value = `/build/generic/web/viewer.html?file=${encodeURIComponent(blobUrl)}`
-    
-    message.success(`文件 "${file.name}" 已加载`)
+    currentPdfUrl.value = blobUrl;
+    console.log(`currentPdfUrl"${currentPdfUrl}"`)
+    Message.success(`文件 "${file.name}" 已加载`)
     showEmbeddedViewer()
   }
   reader.readAsArrayBuffer(file)
@@ -493,9 +491,9 @@ function applyCustomConfig() {
   customModalVisible.value = false
   showEmbeddedViewer()
   
-  notification.success({
-    message: '配置已应用',
-    description: '自定义配置已成功应用到PDF查看器'
+  Notification.success({
+    title: '配置已应用',
+    content: '自定义配置已成功应用到PDF查看器'
   })
 }
 
@@ -511,9 +509,9 @@ function onDocumentLoaded(info) {
   documentStatus.loadTime = info.loadTime || 0
   documentStatus.version = info.version || 'Unknown'
   
-  notification.success({
-    message: '文档加载成功',
-    description: `${info.title || '文档'} (${info.numPages} 页) 已成功加载`
+  Notification.success({
+    title: '文档加载成功',
+    content: `${info.title || '文档'} (${info.numPages} 页) 已成功加载`
   })
 }
 
@@ -529,9 +527,9 @@ function onZoomChanged(zoomLevel) {
 
 function onError(error) {
   console.error('PDF查看器错误:', error)
-  notification.error({
-    message: 'PDF加载错误',
-    description: error.message || '加载PDF时发生未知错误'
+  Notification.error({
+    title: 'PDF加载错误',
+    content: error.message || '加载PDF时发生未知错误'
   })
 }
 
@@ -594,13 +592,13 @@ onMounted(() => {
 }
 
 /* 全屏模态框样式 */
-:global(.fullscreen-modal .ant-modal) {
+:global(.fullscreen-modal .arco-modal) {
   max-width: 100vw !important;
   margin: 0 !important;
   padding: 0 !important;
 }
 
-:global(.fullscreen-modal .ant-modal-content) {
+:global(.fullscreen-modal .arco-modal-wrapper) {
   border-radius: 0 !important;
 }
 

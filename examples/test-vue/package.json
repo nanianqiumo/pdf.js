@@ -10,9 +10,8 @@
     "serve": "vite preview --port 3000"
   },
   "dependencies": {
-    "@ant-design/icons-vue": "^7.0.1",
+    "@arco-design/web-vue": "^2.54.3",
     "@vitejs/plugin-vue": "^4.2.3",
-    "ant-design-vue": "^4.2.6",
     "pdfjs-editor": "file:../../build/dist",
     "vite": "^4.4.5",
     "vue": "^3.3.4"

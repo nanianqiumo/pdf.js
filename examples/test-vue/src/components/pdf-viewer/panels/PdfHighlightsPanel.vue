@@ -20,7 +20,7 @@
 
         <a-space wrap>
           <a-select
-            v-model:value="filterType"
+            v-model:model-value="filterType"
             placeholder="筛选类型"
             style="width: 120px"
             size="small"
@@ -33,7 +33,7 @@
           </a-select>
 
           <a-select
-            v-model:value="filterColor"
+            v-model:model-value="filterColor"
             placeholder="筛选颜色"
             style="width: 100px"
             size="small"
@@ -55,7 +55,7 @@
           </a-select>
 
           <a-input-search
-            v-model:value="searchQuery"
+            v-model:model-value="searchQuery"
             placeholder="搜索高亮内容"
             style="width: 150px"
             size="small"
@@ -155,29 +155,29 @@
                   <a-dropdown :trigger="['click']">
                     <a-button size="small" type="text">
                       更多
-                      <DownOutlined />
+                      <IconDown />
                     </a-button>
                     <template #overlay>
                       <a-menu @click="(e) => handleMenuAction(e.key, item)">
                         <a-menu-item key="goto">
-                          <EyeOutlined />
+                          <IconEye />
                           定位到高亮
                         </a-menu-item>
                         <a-menu-item key="edit">
-                          <EditOutlined />
+                          <IconEdit />
                           编辑备注
                         </a-menu-item>
                         <a-menu-item key="copy">
-                          <CopyOutlined />
+                          <IconCopy />
                           复制文本
                         </a-menu-item>
                         <a-menu-item key="color">
-                          <BgColorsOutlined />
+                          <IconCopy />
                           更改颜色
                         </a-menu-item>
                         <a-menu-divider />
                         <a-menu-item key="delete" danger>
-                          <DeleteOutlined />
+                          <IconDelete />
                           删除高亮
                         </a-menu-item>
                       </a-menu>
@@ -193,7 +193,7 @@
         <a-empty 
           v-else
           description="暂无高亮内容"
-          :image="h(HighlightOutlined)"
+          :image="h(IconHighlight)"
         >
           <template #description>
             <span>暂无高亮内容</span>
@@ -245,7 +245,7 @@
 
     <!-- 编辑备注模态框 -->
     <a-modal
-      v-model:open="editNoteModal.visible"
+      v-model:visible="editNoteModal.visible"
       title="编辑高亮备注"
       @ok="saveHighlightNote"
       @cancel="cancelEditNote"
@@ -258,7 +258,7 @@
         </a-form-item>
         <a-form-item label="备注">
           <a-textarea
-            v-model:value="editNoteModal.note"
+            v-model:model-value="editNoteModal.note"
             placeholder="为这个高亮添加备注..."
             :rows="4"
             show-count
@@ -270,7 +270,7 @@
 
     <!-- 颜色选择器模态框 -->
     <a-modal
-      v-model:open="colorPickerModal.visible"
+      v-model:visible="colorPickerModal.visible"
       title="更改高亮颜色"
       @ok="changeHighlightColor"
       @cancel="cancelColorChange"
@@ -301,16 +301,15 @@
 
 <script setup>
 import { h, ref, computed, watch, inject } from 'vue'
-import { message, Modal } from 'ant-design-vue'
+import { Message, Modal } from '@arco-design/web-vue'
 import {
-  HighlightOutlined,
-  DownOutlined,
-  EyeOutlined,
-  EditOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-  BgColorsOutlined
-} from '@ant-design/icons-vue'
+  IconHighlight,
+  IconDown,
+  IconEye,
+  IconEdit,
+  IconCopy,
+  IconDelete
+} from '@arco-design/web-vue/es/icon'
 
 const props = defineProps({
   highlights: {
@@ -410,7 +409,7 @@ const paginationConfig = computed(() => ({
 // 方法
 function createHighlightWithColor(color) {
   if (!props.pdfViewer || !hasSelectedText.value) {
-    message.warning('请先选中要高亮的文本')
+    Message.warning('请先选中要高亮的文本')
     return
   }
 
@@ -422,11 +421,11 @@ function createHighlightWithColor(color) {
         type: 'manual',
         createdAt: new Date().toISOString()
       })
-      message.success('已创建高亮')
+      Message.success('已创建高亮')
     }
   } catch (error) {
     console.error('创建高亮失败:', error)
-    message.error('创建高亮失败')
+    Message.error('创建高亮失败')
   }
 }
 
@@ -480,11 +479,11 @@ function saveHighlightNote() {
     
     emit('highlight-update', updatedHighlight)
     editNoteModal.value.visible = false
-    message.success('备注已更新')
+    Message.success('备注已更新')
     
   } catch (error) {
     console.error('更新备注失败:', error)
-    message.error('更新备注失败')
+    Message.error('更新备注失败')
   }
 }
 
@@ -516,11 +515,11 @@ function changeHighlightColor() {
     emit('highlight-update', updatedHighlight)
     
     colorPickerModal.value.visible = false
-    message.success('颜色已更改')
+    Message.success('颜色已更改')
     
   } catch (error) {
     console.error('更改颜色失败:', error)
-    message.error('更改颜色失败')
+    Message.error('更改颜色失败')
   }
 }
 
@@ -535,8 +534,8 @@ function cancelColorChange() {
 function copyHighlightText(highlight) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(highlight.text)
-      .then(() => message.success('已复制到剪贴板'))
-      .catch(() => message.error('复制失败'))
+      .then(() => Message.success('已复制到剪贴板'))
+      .catch(() => Message.error('复制失败'))
   } else {
     // 兼容老版本浏览器
     const textArea = document.createElement('textarea')
@@ -545,7 +544,7 @@ function copyHighlightText(highlight) {
     textArea.select()
     document.execCommand('copy')
     document.body.removeChild(textArea)
-    message.success('已复制到剪贴板')
+    Message.success('已复制到剪贴板')
   }
 }
 
@@ -554,7 +553,7 @@ function deleteHighlight(highlight) {
     title: '确认删除',
     content: '确定要删除这个高亮吗？此操作不可撤销。',
     okText: '删除',
-    okType: 'danger',
+    okButtonProps: { status: 'danger' },
     cancelText: '取消',
     onOk() {
       try {
@@ -563,11 +562,11 @@ function deleteHighlight(highlight) {
         }
         
         emit('highlight-delete', highlight)
-        message.success('高亮已删除')
+        Message.success('高亮已删除')
         
       } catch (error) {
         console.error('删除高亮失败:', error)
-        message.error('删除高亮失败')
+        Message.error('删除高亮失败')
       }
     }
   })
@@ -580,7 +579,7 @@ function clearAllHighlights() {
     title: '确认清空',
     content: `确定要删除全部 ${props.highlights.length} 个高亮吗？此操作不可撤销。`,
     okText: '清空',
-    okType: 'danger',
+    okButtonProps: { status: 'danger' },
     cancelText: '取消',
     onOk() {
       try {
@@ -591,11 +590,11 @@ function clearAllHighlights() {
         })
         
         emit('highlights-changed', [])
-        message.success('已清空所有高亮')
+        Message.success('已清空所有高亮')
         
       } catch (error) {
         console.error('清空高亮失败:', error)
-        message.error('清空高亮失败')
+        Message.error('清空高亮失败')
       }
     }
   })
@@ -603,7 +602,7 @@ function clearAllHighlights() {
 
 function exportHighlights(format) {
   if (props.highlights.length === 0) {
-    message.warning('没有高亮可以导出')
+    Message.warning('没有高亮可以导出')
     return
   }
 
@@ -653,11 +652,11 @@ function exportHighlights(format) {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
     
-    message.success(`已导出 ${format.toUpperCase()} 文件`)
+    Message.success(`已导出 ${format.toUpperCase()} 文件`)
     
   } catch (error) {
     console.error('导出失败:', error)
-    message.error('导出失败')
+    Message.error('导出失败')
   }
 }
 
@@ -685,11 +684,11 @@ async function importHighlights(file) {
     }
     
     emit('highlights-changed', [...props.highlights, ...importedHighlights])
-    message.success(`成功导入 ${importedHighlights.length} 个高亮`)
+    Message.success(`成功导入 ${importedHighlights.length} 个高亮`)
     
   } catch (error) {
     console.error('导入失败:', error)
-    message.error('导入失败: ' + error.message)
+    Message.error('导入失败: ' + error.message)
   }
   
   return false // 阻止默认上传行为

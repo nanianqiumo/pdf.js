@@ -5,7 +5,7 @@
       <a-card size="small" title="文本搜索" :bordered="false">
         <a-space direction="vertical" style="width: 100%">
           <a-input-search
-            v-model:value="searchText"
+            v-model:model-value="searchText"
             placeholder="输入要搜索的文本"
             allow-clear
             @search="handleSearch"
@@ -20,14 +20,14 @@
                   @click="previousResult"
                   size="small"
                 >
-                  <template #icon><LeftOutlined /></template>
+                  <template #icon><icon-left /></template>
                 </a-button>
                 <a-button 
                   :disabled="!hasResults || currentResultIndex >= searchResults.length - 1"
                   @click="nextResult"
                   size="small"
                 >
-                  <template #icon><RightOutlined /></template>
+                  <template #icon><icon-right /></template>
                 </a-button>
               </a-button-group>
             </template>
@@ -184,7 +184,7 @@
             <a-form layout="vertical" size="small">
               <a-form-item label="搜索范围">
                 <a-select 
-                  v-model:value="advancedOptions.searchRange"
+                  v-model:model-value="advancedOptions.searchRange"
                   style="width: 100%"
                 >
                   <a-select-option value="all">整个文档</a-select-option>
@@ -199,7 +199,7 @@
               >
                 <a-space>
                   <a-input-number 
-                    v-model:value="advancedOptions.rangeStart"
+                    v-model:model-value="advancedOptions.rangeStart"
                     :min="1"
                     :max="totalPages"
                     placeholder="开始页"
@@ -207,7 +207,7 @@
                   />
                   <span>至</span>
                   <a-input-number 
-                    v-model:value="advancedOptions.rangeEnd"
+                    v-model:model-value="advancedOptions.rangeEnd"
                     :min="advancedOptions.rangeStart || 1"
                     :max="totalPages"
                     placeholder="结束页"
@@ -217,7 +217,7 @@
               </a-form-item>
 
               <a-form-item label="搜索类型">
-                <a-radio-group v-model:value="advancedOptions.searchType">
+                <a-radio-group v-model:model-value="advancedOptions.searchType">
                   <a-radio value="contains">包含</a-radio>
                   <a-radio value="startsWith">开头</a-radio>
                   <a-radio value="endsWith">结尾</a-radio>
@@ -234,11 +234,11 @@
 
 <script setup>
 import { ref, computed, watch, inject } from 'vue'
-import { message } from 'ant-design-vue'
+import { Message } from '@arco-design/web-vue'
 import { 
-  LeftOutlined, 
-  RightOutlined 
-} from '@ant-design/icons-vue'
+  IconLeft, 
+  IconRight 
+} from '@arco-design/web-vue/es/icon'
 
 const props = defineProps({
   pdfViewer: Object,
@@ -280,12 +280,12 @@ const hasResults = computed(() => searchResults.value.length > 0)
 // 方法
 async function handleSearch() {
   if (!searchText.value.trim()) {
-    message.warning('请输入搜索内容')
+    Message.warning('请输入搜索内容')
     return
   }
 
   if (!props.pdfViewer) {
-    message.error('PDF查看器未准备就绪')
+    Message.error('PDF查看器未准备就绪')
     return
   }
 
@@ -310,14 +310,14 @@ async function handleSearch() {
         results,
         total: results.length
       })
-      message.success(`找到 ${results.length} 个搜索结果`)
+      Message.success(`找到 ${results.length} 个搜索结果`)
     } else {
-      message.info('未找到匹配的内容')
+      Message.info('未找到匹配的内容')
     }
 
   } catch (error) {
     console.error('搜索失败:', error)
-    message.error('搜索过程中出现错误')
+    Message.error('搜索过程中出现错误')
   } finally {
     searching.value = false
   }
@@ -408,7 +408,7 @@ function highlightResult(result) {
       color: '#ffeb3b',
       type: 'search-highlight'
     })
-    message.success('已添加高亮')
+    Message.success('已添加高亮')
   }
 }
 
@@ -425,14 +425,14 @@ function highlightAllResults() {
     }
   })
   
-  message.success(`已为 ${count} 个搜索结果添加高亮`)
+  Message.success(`已为 ${count} 个搜索结果添加高亮`)
 }
 
 function copyResultText(result) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(result.context)
-      .then(() => message.success('已复制到剪贴板'))
-      .catch(() => message.error('复制失败'))
+      .then(() => Message.success('已复制到剪贴板'))
+      .catch(() => Message.error('复制失败'))
   } else {
     // 兼容老版本浏览器
     const textArea = document.createElement('textarea')
@@ -441,7 +441,7 @@ function copyResultText(result) {
     textArea.select()
     document.execCommand('copy')
     document.body.removeChild(textArea)
-    message.success('已复制到剪贴板')
+    Message.success('已复制到剪贴板')
   }
 }
 

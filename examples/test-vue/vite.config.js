@@ -13,7 +13,7 @@ export default defineConfig({
       "Cross-Origin-Opener-Policy": "same-origin",
     },
     fs: {
-      allow: ["..", "../.."], // 允许访问上级目录
+      // allow: ["..", "../.."], // 允许访问上级目录
     },
   },
   build: {
@@ -26,6 +26,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ["pdfjs-editor/interface"],
+    // exclude: ["pdfjs-editor"],
   },
 });

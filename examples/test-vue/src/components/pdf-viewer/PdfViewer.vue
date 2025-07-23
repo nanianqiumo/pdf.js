@@ -10,7 +10,7 @@
         <a-space>
           <a-button
             type="text"
-            :icon="h(FullscreenExitOutlined)"
+            :icon="h(IconFullscreenExit)"
             @click="exitFullscreen"
           />
         </a-space>
@@ -85,7 +85,7 @@
               >
                 <!-- 默认的标签页内容 -->
                 <a-tabs 
-                  v-model:activeKey="activeSidebarTab" 
+                  v-model="activeSidebarTab" 
                   :tabPosition="sidebarTabPosition"
                   class="sidebar-tabs"
                 >
@@ -93,7 +93,7 @@
                   <a-tab-pane 
                     v-if="panels.navigation" 
                     key="navigation" 
-                    tab="导航"
+                    title="导航"
                   >
                     <template #tab>
                       <span><menu-outlined />导航</span>
@@ -110,7 +110,7 @@
                   <a-tab-pane 
                     v-if="panels.search" 
                     key="search" 
-                    tab="搜索"
+                    title="搜索"
                   >
                     <template #tab>
                       <span><search-outlined />搜索</span>
@@ -125,7 +125,7 @@
                   <a-tab-pane 
                     v-if="panels.highlights" 
                     key="highlights" 
-                    tab="高亮"
+                    title="高亮"
                   >
                     <template #tab>
                       <span>
@@ -146,7 +146,7 @@
                   <a-tab-pane 
                     v-if="panels.info" 
                     key="info" 
-                    tab="信息"
+                    title="信息"
                   >
                     <template #tab>
                       <span><info-circle-outlined />信息</span>
@@ -179,18 +179,18 @@
               <a-button 
                 :disabled="currentPage <= 1"
                 @click="previousPage"
-                :icon="h(LeftOutlined)"
+                :icon="h(IconLeft)"
               />
               <a-button 
                 :disabled="currentPage >= totalPages"
                 @click="nextPage"
-                :icon="h(RightOutlined)"
+                :icon="h(IconRight)"
               />
             </a-button-group>
 
             <a-input-number
               v-if="options.enableNavigation"
-              v-model:value="currentPage"
+              v-model:model-value="currentPage"
               :min="1"
               :max="totalPages"
               :disabled="!pdfViewer"
@@ -205,19 +205,19 @@
             <a-button-group v-if="options.enableZoom">
               <a-button 
                 @click="zoomOut"
-                :icon="h(ZoomOutOutlined)"
+                :icon="h(IconZoomOut)"
                 :disabled="!pdfViewer"
               />
               <a-button 
                 @click="zoomIn"
-                :icon="h(ZoomInOutlined)"
+                :icon="h(IconZoomIn)"
                 :disabled="!pdfViewer"
               />
             </a-button-group>
 
             <a-select
               v-if="options.enableZoom"
-              v-model:value="zoomLevel"
+              v-model:model-value="zoomLevel"
               @change="setZoom"
               :disabled="!pdfViewer"
               size="small"
@@ -237,7 +237,7 @@
 
             <a-button 
               v-if="options.enableDownload"
-              :icon="h(DownloadOutlined)"
+              :icon="h(IconDownload)"
               @click="downloadPdf"
               :disabled="!pdfViewer"
               type="default"
@@ -247,10 +247,10 @@
 
             <a-button 
               v-if="options.enablePrint"
-              :icon="h(PrinterOutlined)"
+              :icon="h(IconFullscreen)"
               @click="printPdf"
               :disabled="!pdfViewer"
-              type="default"
+              type="primary"
             >
               打印
             </a-button>
@@ -259,7 +259,7 @@
               v-if="options.enableFullscreen && !isModal"
               :icon="h(isFullscreen ? FullscreenExitOutlined : FullscreenOutlined)"
               @click="toggleFullscreen"
-              type="default"
+              type="primary"
             >
               {{ isFullscreen ? '退出全屏' : '全屏' }}
             </a-button>
@@ -272,22 +272,22 @@
 
 <script setup>
 import { h, ref, reactive, computed, watch, onMounted, onUnmounted, provide, nextTick, readonly } from 'vue'
-import { message, notification } from 'ant-design-vue'
+import { Message, Notification } from '@arco-design/web-vue'
 import { 
-  FileTextOutlined,
-  HighlightOutlined,
-  SearchOutlined,
-  InfoCircleOutlined,
-  MenuOutlined,
-  DownloadOutlined,
-  PrinterOutlined,
-  ZoomInOutlined,
-  ZoomOutOutlined,
-  LeftOutlined,
-  RightOutlined,
-  FullscreenOutlined,
-  FullscreenExitOutlined
-} from '@ant-design/icons-vue'
+  IconFile,
+  IconHighlight,
+  IconSearch,
+  IconInfoCircle,
+  IconMenu,
+  IconDownload,
+  IconPrinter,
+  IconZoomIn,
+  IconZoomOut,
+  IconLeft,
+  IconRight,
+  IconFullscreen,
+  IconFullscreenExit
+} from '@arco-design/web-vue/es/icon'
 
 import { DEFAULT_VIEWER_OPTIONS, PDF_EVENTS, THEME_CONFIG } from './config.js'
 import PdfNavigationPanel from './panels/PdfNavigationPanel.vue'
@@ -318,7 +318,7 @@ const props = defineProps({
   // 侧边栏宽度
   sidebarWidth: {
     type: Number,
-    default: 320
+    default: 400
   },
   
   // 侧边栏标签位置
@@ -437,12 +437,12 @@ const sidebarTitle = computed(() => {
 
 const sidebarIcon = computed(() => {
   const iconMap = {
-    navigation: MenuOutlined,
-    search: SearchOutlined,
-    highlights: HighlightOutlined,
-    info: InfoCircleOutlined
+    navigation: IconMenu,
+    search: IconSearch,
+    highlights: IconHighlight,
+    info: IconInfoCircle
   }
-  return iconMap[activeSidebarTab.value] || FileTextOutlined
+  return iconMap[activeSidebarTab.value] || IconFile
 })
 
 // 工具栏操作
@@ -487,7 +487,7 @@ const emitEvent = (eventType, data) => {
 // PDF查看器方法
 async function loadPdf(url = props.url) {
   if (!url) {
-    message.warning('请提供PDF文件URL')
+    Message.warning('请提供PDF文件URL')
     return
   }
   
@@ -500,7 +500,6 @@ async function loadPdf(url = props.url) {
     const { EnhancedPDFViewer, MessageType } = await import('pdfjs-editor/interface')
     
     loadingMessage.value = '正在创建查看器实例...'
-    
     // 创建查看器实例
     pdfViewer.value = EnhancedPDFViewer.getInstance(pdfContainer.value, mergedOptions.value)
     
@@ -516,7 +515,7 @@ async function loadPdf(url = props.url) {
   } catch (error) {
     loading.value = false
     const errorMessage = `加载PDF失败: ${error.message}`
-    message.error(errorMessage)
+    Message.error(errorMessage)
     emitEvent('error-occurred', { error, message: errorMessage })
   }
 }
@@ -524,18 +523,18 @@ async function loadPdf(url = props.url) {
 function registerPdfEvents() {
   const eventMap = {
     [PDF_EVENTS.PDFJS_INTERFACE_READY]: () => {
-      message.success('PDF查看器已准备就绪')
+      Message.success('PDF查看器已准备就绪')
     },
     [PDF_EVENTS.DOCUMENT_LOADED]: (info) => {
       emitEvent('document-loaded', info)
-      message.success(`文档加载完成: ${info.title || '未知文档'}`)
+      Message.success(`文档加载完成: ${info.title || '未知文档'}`)
     },
     [PDF_EVENTS.PAGE_CHANGED]: (page) => {
       emitEvent('page-changed', page)
     },
     [PDF_EVENTS.HIGHLIGHT_CREATED]: (highlight) => {
       emitEvent('highlight-created', highlight)
-      notification.success({
+      Notification.success({
         message: '创建高亮',
         description: `已创建高亮: ${highlight.text.substring(0, 50)}...`,
         duration: 2
@@ -543,7 +542,7 @@ function registerPdfEvents() {
     },
     [PDF_EVENTS.HIGHLIGHT_REMOVED]: (highlight) => {
       emitEvent('highlight-removed', highlight)
-      message.info('已删除高亮')
+      Message.info('已删除高亮')
     }
   }
   
@@ -659,7 +658,7 @@ provide('pdfViewerContext', {
 // 生命周期
 onMounted(() => {
   // 如果没有提供URL，则使用默认的PDF文件
-  const defaultUrl = '/build/generic/web/viewer.html?file=/examples/learning/helloworld.pdf'
+  const defaultUrl = ''
   const pdfUrl = props.url || defaultUrl
   
   if (pdfUrl) {

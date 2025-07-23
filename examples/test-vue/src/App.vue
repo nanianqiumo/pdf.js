@@ -32,7 +32,7 @@
                 <a-col :span="12">
                   <a-form layout="vertical">
                     <a-form-item label="选择PDF文件">
-                      <a-select v-model:value="selectedPdf" style="width: 100%;">
+                      <a-select v-model:model-value="selectedPdf" style="width: 100%;">
                         <a-select-option value="/test/pdfs/tracemonkey.pdf">
                           示例PDF - TracemonKey
                         </a-select-option>
@@ -52,7 +52,7 @@
                     
                     <a-form-item v-if="selectedPdf === 'custom'" label="自定义PDF URL">
                       <a-input
-                        v-model:value="customPdfUrl"
+                        v-model:model-value="customPdfUrl"
                         placeholder="输入PDF URL"
                       />
                     </a-form-item>
@@ -64,7 +64,7 @@
                         accept=".pdf"
                       >
                         <a-button>
-                          <UploadOutlined />
+                          <template #icon><IconUpload /></template>
                           选择文件
                         </a-button>
                       </a-upload>
@@ -102,7 +102,7 @@
                     
                     <a-form-item label="初始页码">
                       <a-input-number
-                        v-model:value="options.initialPage"
+                        v-model:model-value="options.initialPage"
                         :min="1"
                         style="width: 100%;"
                       />
@@ -133,7 +133,7 @@
           <!-- 控制面板部分 -->
           <a-col :span="8">
             <a-card>
-              <a-tabs v-model:active-key="activeTab">
+              <a-tabs v-model:active-tab="activeTab">
                 <a-tab-pane key="navigation" tab="导航">
                   <div v-if="pdfViewer" style="padding: 16px;">
                     <p>导航面板 - PDF查看器已加载</p>
@@ -184,7 +184,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, nextTick } from "vue";
-import { UploadOutlined } from '@ant-design/icons-vue';
+import { IconUpload } from '@arco-design/web-vue/es/icon';
 
 // 响应式数据
 const pdfContainer = ref(null);
@@ -203,7 +203,7 @@ const options = reactive({
   enablePrint: true,
   debugger: false,
   initialPage: 1,
-  viewerPath: "/build/generic/web/viewer.html", // 使用generic build目录下的viewer.html
+  // viewerPath: "/build/generic/web/viewer.html", // 使用generic build目录下的viewer.html
 });
 
 const logEntries = ref([]);
